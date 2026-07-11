@@ -321,8 +321,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   height: 100%;
   object-fit: contain;
   object-position: center bottom;
+  background: transparent;
   filter: drop-shadow(0 14px 12px rgba(23,63,53,.16));
-  mix-blend-mode: multiply;
 }
 .character .character-shadow {
   position: absolute;

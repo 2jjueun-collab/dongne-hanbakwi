@@ -1,8 +1,8 @@
-const CACHE = 'hagom-local-quest-v5-image-fix';
+const CACHE = 'hagom-local-quest-v7-standing-cutout';
 const ASSETS = [
   './', './index.html', './styles.css', './app.js', './data.js',
-  './manifest.webmanifest', './assets/hagom-placeholder.svg',
-  './assets/favicon.svg', './assets/app-icon.svg'
+  './manifest.webmanifest', './assets/hagom-front-stand-cutout.png',
+  './assets/hagom-placeholder.svg', './assets/favicon.svg', './assets/app-icon.svg'
 ];
 
 self.addEventListener('install', (event) => {

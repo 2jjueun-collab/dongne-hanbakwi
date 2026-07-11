@@ -52,8 +52,6 @@ git push -u origin main
 
 ## 하곰 이미지
 
-- 실제 앱 이미지: `assets/hagom.png`
-- 원본 캐릭터 시트: `assets/hagom-character-sheet.png`
 - 이미지 로딩 실패용 대체 파일: `assets/hagom-placeholder.svg`
 
 이미지 경로와 캐릭터 이름은 `data.js`에서 변경할 수 있습니다.
@@ -61,8 +59,8 @@ git push -u origin main
 ```js
 export const CHARACTER = {
   name: '하곰',
-  image: './assets/hagom.png',
-  fallbackImage: './assets/hagom-placeholder.svg'
+  image: './assets/hagom-front-stand-cutout.png',
+  fallbackImage: HAGOM_CUTOUT_INLINE
 };
 ```
 
@@ -122,6 +120,14 @@ export const HIDDEN_DRAW_COST = 250;
 
 ## 하곰 이미지가 깨질 때
 
-이번 버전은 하곰 이미지를 `data.js` 안에 WebP 데이터로 직접 포함합니다. 따라서 GitHub에 `assets/hagom.png`가 빠져도 기본 하곰은 정상 표시됩니다.
 
 기존 배포에서 이미지가 계속 깨지면 Vercel 재배포 후 브라우저에서 `Ctrl + Shift + R`로 강력 새로고침하세요. 서비스 워커 캐시 버전도 함께 변경되어 다음 접속부터 자동 갱신됩니다.
+
+
+## 하곰 이미지 적용 방식
+
+- 웹페이지에 원본 이미지 전체를 붙이지 않습니다.
+- 두 번째 캐릭터 설정 이미지의 **정면 차렷 자세만 누끼 처리한 투명 PNG**를 사용합니다.
+- 실제 파일: `assets/hagom-front-stand-cutout.png`
+- `data.js`에는 같은 투명 이미지를 예비 데이터로 포함해, 배포 과정에서 이미지 경로가 잘못되어도 캐릭터가 깨지지 않도록 했습니다.
+- 하곰 꾸미기와 친구 캐릭터 미리보기에서도 동일한 정면 자세를 사용합니다.
