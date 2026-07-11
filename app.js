@@ -34,7 +34,8 @@ function itemIconMarkup(item, context = 'card') {
   const resolved = resolveItem(item);
   const label = escapeHTML(resolved.name || '아이템');
   if (resolved.icon) {
-    return `<span class="item-icon item-icon-${escapeHTML(context)}"><img src="${escapeHTML(resolved.icon)}" alt="${label}" loading="eager" /></span>`;
+    const fallback = escapeHTML(resolved.emoji || '•');
+    return `<span class="item-icon item-icon-${escapeHTML(context)}" data-fallback="${fallback}"><img src="${escapeHTML(resolved.icon)}" alt="${label}" loading="eager" onerror="this.dataset.loadError='true';this.parentElement.classList.add('has-fallback')" /></span>`;
   }
   return `<span class="item-icon item-icon-${escapeHTML(context)} item-icon-emoji" aria-label="${label}">${escapeHTML(resolved.emoji || '•')}</span>`;
 }

@@ -1,9 +1,8 @@
-하곰 이미지 파일
+기존 프로젝트에서 아래 4개 파일을 교체하세요.
+- data.js
+- app.js
+- styles.css
+- sw.js
 
-- hagom-front-balanced.png
-  캐릭터 설정 이미지의 정면 차렷 자세만 분리한 투명 배경 PNG입니다.
-  좌우와 상하에 투명 여백을 추가해 모바일 화면에서도 팔과 몸이 잘리지 않습니다.
-  홈페이지, 하곰 꾸미기, 친구 미리보기, 만보기 순위에 사용됩니다.
-
-- hagom-placeholder.svg
-  예외 상황에서만 사용하는 대체 이미지입니다.
+교체 후 GitHub에 push하고 Vercel 배포 완료 뒤 Ctrl+Shift+R을 누르세요.
+아이템 SVG는 data.js에 내장되어 assets/items 폴더가 누락돼도 깨지지 않습니다.
