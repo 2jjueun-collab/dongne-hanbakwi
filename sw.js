@@ -1,5 +1,9 @@
-const CACHE = 'dongne-hanbakwi-v2';
-const ASSETS = ['./', './index.html', './styles.css', './app.js', './data.js', './manifest.webmanifest', './assets/favicon.svg', './assets/app-icon.svg'];
+const CACHE = 'hagom-local-quest-v4';
+const ASSETS = [
+  './', './index.html', './styles.css', './app.js', './data.js',
+  './manifest.webmanifest', './assets/hagom.png', './assets/hagom-placeholder.svg',
+  './assets/favicon.svg', './assets/app-icon.svg'
+];
 self.addEventListener('install', (event) => event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS))));
 self.addEventListener('activate', (event) => event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))));
 self.addEventListener('fetch', (event) => {

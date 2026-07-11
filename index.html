@@ -4,36 +4,37 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#173f35" />
-  <meta name="description" content="경산의 랜드마크를 방문하고 지역 아이템을 수집하는 위치 기반 탐험 웹앱 MVP" />
+  <meta name="description" content="경산 랜드마크를 반복 탐험하고 하곰 아이템을 수집하는 위치 기반 웹앱 MVP" />
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="stylesheet" href="./styles.css" />
-  <title>동네 한 바퀴 · 경산 탐험</title>
+  <title>동네 한 바퀴 · 하곰 탐험</title>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="#explore" aria-label="동네 한 바퀴 홈">
         <span class="brand-mark" aria-hidden="true">동</span>
-        <span><strong>동네 한 바퀴</strong><small>경산 탐험 MVP</small></span>
+        <span><strong>동네 한 바퀴</strong><small>하곰과 경산 탐험</small></span>
       </a>
       <button class="icon-button" id="resetButton" type="button" aria-label="진행 상황 초기화" title="진행 상황 초기화">↻</button>
     </header>
 
     <main>
       <section class="hero" aria-labelledby="heroTitle">
-        <div>
+        <div class="hero-copy">
           <span class="eyebrow">LOCAL QUEST · GYEONGSAN</span>
-          <h1 id="heroTitle">걷고, 발견하고,<br />흰곰을 꾸며요.</h1>
-          <p>경산의 장소를 방문해 포인트와 지역 아이템을 얻고, 나만의 흰곰 탐험가를 완성해 보세요.</p>
+          <h1 id="heroTitle">다시 가도 새로워요.<br />하곰과 한 바퀴.</h1>
+          <p>같은 장소도 반복 방문할 수 있어요. 매번 랜덤 지역 아이템과 포인트를 획득합니다.</p>
         </div>
-        <div class="hero-character" id="heroCharacter" aria-label="현재 흰곰 캐릭터 미리보기"></div>
+        <div class="hero-character" id="heroCharacter" aria-label="현재 하곰 캐릭터 미리보기"></div>
       </section>
 
       <section class="stats" aria-label="탐험 현황">
-        <article><strong id="visitedCount">0</strong><span>방문 장소</span></article>
-        <article><strong id="itemCount">0</strong><span>보유 아이템</span></article>
-        <article><strong id="pointCount">0</strong><span>사용 가능 포인트</span></article>
+        <article><strong id="uniqueVisitedCount">0</strong><span>방문 장소</span></article>
+        <article><strong id="totalVisitCount">0</strong><span>누적 방문</span></article>
+        <article><strong id="itemCount">0</strong><span>보유 종류</span></article>
+        <article><strong id="pointCount">0</strong><span>사용 가능 P</span></article>
       </section>
 
       <section class="location-panel" aria-live="polite">
@@ -47,41 +48,69 @@
       <section class="view active" id="exploreView" data-view="explore">
         <div class="section-heading">
           <div><span class="eyebrow">EXPLORE</span><h2>오늘의 탐험지</h2></div>
-          <button class="text-button" id="demoAllButton" type="button">심사용 전체 해금</button>
+          <button class="text-button" id="demoAllButton" type="button">심사용 1회씩 방문</button>
         </div>
         <div class="filter-row" id="categoryFilters" aria-label="장소 카테고리 필터"></div>
         <div class="landmark-list" id="landmarkList"></div>
       </section>
 
       <section class="view" id="characterView" data-view="character">
-        <div class="section-heading"><div><span class="eyebrow">MY WHITE BEAR</span><h2>흰곰 꾸미기</h2></div></div>
+        <div class="section-heading"><div><span class="eyebrow">MY HAGOM</span><h2>하곰 꾸미기</h2></div></div>
         <article class="character-studio">
           <div class="character-stage" id="characterStage"></div>
           <div class="studio-copy">
-            <span class="status-chip">나의 경산 흰곰</span>
-            <h3 id="characterName">반가워, 탐험가!</h3>
-            <p>방문 보상과 상점에서 얻은 아이템을 눌러 흰곰에게 착용할 수 있습니다.</p>
-            <button class="secondary-button" id="shareButton" type="button">탐험 카드 공유</button>
+            <span class="status-chip">나의 경산 탐험가</span>
+            <h3>반가워, 하곰!</h3>
+            <p>방문 보상, 상점, 히든 뽑기에서 얻은 아이템을 착용할 수 있습니다.</p>
+            <button class="secondary-button" id="shareButton" type="button">탐험 기록 공유</button>
           </div>
         </article>
-        <div class="section-heading small"><div><h2>보유 아이템</h2></div><span id="ownedSummary">0개 보유</span></div>
+        <div class="section-heading small"><div><h2>보유 아이템</h2></div><span id="ownedSummary">0종 보유</span></div>
         <div class="inventory-grid" id="inventoryGrid"></div>
       </section>
 
       <section class="view" id="shopView" data-view="shop">
         <article class="shop-hero">
-          <div><span class="eyebrow">POINT SHOP</span><h2>흰곰 아이템 상점</h2><p>탐험과 미션으로 모은 포인트로 아이템을 구매하세요.</p></div>
+          <div><span class="eyebrow">POINT SHOP</span><h2>하곰 아이템 상점</h2><p>탐험과 미션으로 모은 포인트를 사용합니다.</p></div>
           <div class="balance-box"><small>현재 잔액</small><strong><span id="shopPointCount">0</span>P</strong></div>
         </article>
         <div class="shop-grid" id="shopGrid"></div>
-        <article class="secret-card">
-          <div class="secret-icon" aria-hidden="true">?</div>
-          <div class="secret-copy"><span class="eyebrow">HIDDEN ITEM</span><h3>비밀 코드를 찾았나요?</h3><p>정확한 코드를 입력하면 포인트 차감 없이 히든 아이템이 해금됩니다.</p></div>
-          <label class="secret-code-field">히든 아이템 코드
-            <div><input id="hiddenCodeInput" type="text" autocomplete="off" spellcheck="false" placeholder="코드 입력" /><button id="hiddenCodeButton" type="button">해금</button></div>
-          </label>
-          <p class="form-message" id="hiddenCodeMessage" aria-live="polite"></p>
+
+        <article class="gacha-card">
+          <div class="mystery-orb" aria-hidden="true"><span>?</span></div>
+          <div class="gacha-copy">
+            <span class="eyebrow">HIDDEN DRAW</span>
+            <h3>히든 아이템 뽑기</h3>
+            <p>아이템의 이름과 모습은 획득 전까지 공개되지 않습니다. 한 번 뽑을 때마다 포인트가 차감됩니다.</p>
+          </div>
+          <button class="primary-button" id="hiddenDrawButton" type="button"><span id="hiddenDrawCost">250</span>P로 뽑기</button>
+          <p class="gacha-note" id="hiddenDrawMessage" aria-live="polite">결과는 무작위입니다. 이미 얻은 아이템이 다시 나올 수 있습니다.</p>
         </article>
+      </section>
+
+      <section class="view" id="friendsView" data-view="friends">
+        <div class="section-heading"><div><span class="eyebrow">FRIENDS</span><h2>친구의 하곰</h2></div><span id="friendCount">0명</span></div>
+
+        <article class="friend-code-card">
+          <div>
+            <span class="eyebrow">MY FRIEND CODE</span>
+            <h3>내 하곰 공유 코드</h3>
+            <p>친구에게 이 코드를 보내면 현재 착용 상태를 친구 목록에 추가할 수 있습니다.</p>
+          </div>
+          <label>내 하곰 이름
+            <div class="inline-field"><input id="profileNameInput" type="text" maxlength="18" value="하곰" /><button id="saveProfileNameButton" type="button">저장</button></div>
+          </label>
+          <div class="share-code-row"><code id="myFriendCode">코드 생성 중</code><button class="secondary-button compact" id="copyFriendCodeButton" type="button">복사</button></div>
+        </article>
+
+        <article class="friend-add-card">
+          <div><h3>친구 추가</h3><p>친구에게 받은 공유 코드를 붙여 넣으세요.</p></div>
+          <div class="inline-field"><input id="friendCodeInput" type="text" autocomplete="off" spellcheck="false" placeholder="친구 공유 코드" /><button id="addFriendButton" type="button">추가</button></div>
+          <p class="form-message" id="friendMessage" aria-live="polite"></p>
+          <button class="text-button" id="addDemoFriendsButton" type="button">발표용 친구 3명 추가</button>
+        </article>
+
+        <div class="friend-list" id="friendList"></div>
       </section>
 
       <section class="view" id="collectionView" data-view="collection">
@@ -94,7 +123,7 @@
         <div class="section-heading"><div><span class="eyebrow">LOCAL MISSION</span><h2>지역 미션</h2></div></div>
         <div class="mission-list" id="missionList"></div>
         <article class="coupon-card" id="couponCard">
-          <div><span class="eyebrow">PARTNER COUPON</span><h3>경산 로컬 카페 10% 할인</h3><p>랜드마크 3곳 방문 시 쿠폰이 열립니다.</p></div>
+          <div><span class="eyebrow">PARTNER COUPON</span><h3>경산 로컬 카페 10% 할인</h3><p>서로 다른 랜드마크 3곳 방문 시 쿠폰이 열립니다.</p></div>
           <strong id="couponCode">LOCKED</strong>
         </article>
       </section>
@@ -102,8 +131,9 @@
 
     <nav class="bottom-nav" aria-label="주요 메뉴">
       <button class="nav-item active" type="button" data-target="explore"><span>⌖</span>탐험</button>
-      <button class="nav-item" type="button" data-target="character"><span>🐻‍❄️</span>흰곰</button>
+      <button class="nav-item" type="button" data-target="character"><span>🐻‍❄️</span>하곰</button>
       <button class="nav-item" type="button" data-target="shop"><span>🛍</span>상점</button>
+      <button class="nav-item" type="button" data-target="friends"><span>👥</span>친구</button>
       <button class="nav-item" type="button" data-target="collection"><span>◇</span>도감</button>
       <button class="nav-item" type="button" data-target="mission"><span>✓</span>미션</button>
     </nav>
@@ -115,6 +145,7 @@
       <span class="eyebrow">VISIT CHECK</span>
       <h2 id="verifyTitle">방문 인증</h2>
       <p id="verifyDescription"></p>
+      <div class="reward-preview hidden-preview"><span>?</span><div><small>이번 방문 보상</small><strong>장소 아이템 중 랜덤 1개</strong></div></div>
       <div class="verify-actions">
         <button class="primary-button" id="gpsVerifyButton" type="button">GPS로 인증</button>
         <button class="secondary-button" id="demoVerifyButton" type="button">데모 방문 처리</button>
@@ -126,9 +157,29 @@
     </form>
   </dialog>
 
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <canvas id="shareCanvas" width="1080" height="1350" hidden></canvas>
+  <dialog id="resultDialog" class="modal reward-modal">
+    <form method="dialog" class="modal-card reward-result-card">
+      <button class="modal-close" value="close" aria-label="닫기">×</button>
+      <span class="eyebrow" id="resultEyebrow">REWARD</span>
+      <div class="result-art" id="resultArt">🎁</div>
+      <h2 id="resultTitle">아이템 획득!</h2>
+      <p id="resultDescription"></p>
+      <button class="primary-button" value="close">확인</button>
+    </form>
+  </dialog>
 
+  <dialog id="friendDialog" class="modal">
+    <form method="dialog" class="modal-card friend-detail-card">
+      <button class="modal-close" value="close" aria-label="닫기">×</button>
+      <span class="eyebrow">FRIEND'S HAGOM</span>
+      <h2 id="friendDialogTitle">친구의 하곰</h2>
+      <div class="friend-character-large" id="friendDialogCharacter"></div>
+      <div class="friend-equipped-list" id="friendDialogItems"></div>
+      <button class="secondary-button" id="removeFriendButton" type="button">친구 목록에서 삭제</button>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script type="module" src="./app.js"></script>
 </body>
 </html>

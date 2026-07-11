@@ -1,25 +1,28 @@
-# 동네 한 바퀴 — 경산 탐험 MVP
+# 동네 한 바퀴 — 하곰 탐험 MVP
 
-경산의 랜드마크를 방문하고, 장소별 아이템과 포인트를 모아 **흰곰 캐릭터**를 꾸미는 모바일 우선 위치 기반 웹앱 MVP입니다.
+경산 랜드마크를 반복 방문하고 매번 랜덤 지역 아이템과 포인트를 받아 **하곰**을 꾸미는 모바일 우선 웹앱입니다. 정적 파일만 사용하므로 GitHub에 올린 뒤 Vercel에서 별도 빌드 없이 배포할 수 있습니다.
 
-별도 서버·데이터베이스·유료 지도 API 없이 실행됩니다. 방문·구매 기록은 브라우저 `localStorage`에 저장되며, 실제 GPS 인증과 발표용 데모 인증을 모두 지원합니다.
+## 적용된 기능
 
-## 구현 기능
+- 사용자가 제공한 하곰 캐릭터 이미지 적용
+- 캐릭터 이름 `하곰`
+- GPS, QR, 발표용 데모 방문 인증
+- 동일 장소 반복 방문 가능
+- 각 랜드마크마다 3종의 지역 아이템 보상
+- 방문할 때마다 해당 장소 보상 중 1개를 무작위 지급
+- 중복 아이템 누적 개수 표시
+- 방문 및 미션 완료 시 포인트 획득
+- 포인트 상점에서 일반 아이템 구매
+- 포인트 전용 히든 아이템 뽑기
+- 히든 아이템은 획득 전 이름과 모습 비공개
+- 친구 공유 코드 생성 및 친구 목록 추가
+- 친구의 현재 하곰 착용 모습 확인
+- 친구 3명 이상 추가 시 숨겨진 우정 뱃지 획득
+- 브라우저 저장 및 PWA 오프라인 캐시
 
-- 경산 랜드마크 목록 및 카테고리 필터
-- 브라우저 GPS 위치 확인 및 반경 기반 방문 인증
-- 현장 QR 값 입력 인증
-- 발표용 개별/전체 데모 해금
-- 흰색 곰 캐릭터와 아이템 착용/해제
-- 방문 및 미션 포인트 적립
-- 포인트 상점, 잔액 차감, 구매 기록 저장
-- 히든 코드 입력 및 전용 아이템 해금
-- 방문 보상·상점·히든 아이템 통합 도감
-- 단계별 미션과 제휴 쿠폰 해금
-- Web Share API 또는 클립보드 공유
-- 모바일 설치형 PWA 및 오프라인 캐시
+## 실행 방법
 
-## 바로 실행
+정적 파일을 직접 열기보다 로컬 서버를 사용합니다.
 
 ```bash
 python -m http.server 3000
@@ -32,7 +35,7 @@ python -m http.server 3000
 ```bash
 git init
 git add .
-git commit -m "feat: 흰곰 캐릭터와 포인트 상점 추가"
+git commit -m "feat: 하곰 친구와 랜덤 방문 보상 추가"
 git branch -M main
 git remote add origin https://github.com/사용자명/저장소명.git
 git push -u origin main
@@ -41,44 +44,78 @@ git push -u origin main
 ## Vercel 배포
 
 1. Vercel에서 **Add New → Project**를 선택합니다.
-2. 이 프로젝트를 올린 GitHub 저장소를 Import합니다.
-3. Framework Preset은 `Other`, Build Command는 비워 두고, Output Directory는 `.`로 둡니다.
-4. Deploy를 누릅니다.
+2. GitHub 저장소를 Import합니다.
+3. Framework Preset은 `Other`로 선택합니다.
+4. Build Command는 비워 둡니다.
+5. Output Directory는 `.`으로 설정합니다.
+6. Deploy를 누릅니다.
 
-## 포인트 상점 수정
+## 하곰 이미지
 
-`data.js`의 `SHOP_ITEMS`에서 이름, 이모지, 착용 위치, 가격을 수정할 수 있습니다.
+- 실제 앱 이미지: `assets/hagom.png`
+- 원본 캐릭터 시트: `assets/hagom-character-sheet.png`
+- 이미지 로딩 실패용 대체 파일: `assets/hagom-placeholder.svg`
 
-```js
-{ id: 'red-scarf', name: '빨간 목도리', emoji: '🧣', slot: 'neck', price: 180 }
-```
-
-착용 위치는 `hat`, `hand`, `neck`, `chest` 중 하나입니다.
-
-## 히든 아이템 코드
-
-현재 시연용 히든 코드는 다음과 같습니다.
-
-```text
-YUKK-BEAR-26
-```
-
-코드를 다시 변경하려면 `data.js`의 아래 값을 수정하세요.
+이미지 경로와 캐릭터 이름은 `data.js`에서 변경할 수 있습니다.
 
 ```js
-export const HIDDEN_ITEM_CODE = 'YUKK-BEAR-26';
+export const CHARACTER = {
+  name: '하곰',
+  image: './assets/hagom.png',
+  fallbackImage: './assets/hagom-placeholder.svg'
+};
 ```
 
-정적 웹앱의 코드는 브라우저에서 확인할 수 있으므로 실제 서비스의 비밀 코드 검증은 서버 또는 데이터베이스 함수에서 처리해야 합니다.
+## 랜드마크 랜덤 보상
 
-## 실제 운영 전 수정할 곳
+`data.js`의 각 `LANDMARKS` 항목에 있는 `rewards` 배열을 수정합니다. 현재 모든 장소에 3개의 아이템이 들어 있습니다.
 
-`data.js`의 `LANDMARKS` 배열에서 아래 항목을 검증·수정하세요.
+```js
+rewards: [
+  { id: 'yu-cap', name: '영대 학사모', emoji: '🎓', slot: 'hat' },
+  { id: 'yu-jacket', name: '캠퍼스 점퍼', emoji: '🧥', slot: 'chest' },
+  { id: 'yu-notebook', name: '탐험 노트', emoji: '📓', slot: 'hand' }
+]
+```
 
-- `lat`, `lng`: 현장 인증 지점의 정확한 위도·경도
-- `radius`: GPS 허용 반경(미터)
-- `qrCode`: 현장에 게시할 QR 코드 문자열
-- `reward`: 장소별 아이템
-- `points`: 장소별 보상 포인트
+방문 처리 시 `app.js`의 `completeVisit()`가 해당 장소의 보상 중 하나를 무작위로 선택합니다. 같은 장소를 다시 방문해도 포인트와 랜덤 아이템이 지급됩니다.
 
-현재 좌표는 MVP 시연용 근사값입니다.
+## 히든 뽑기
+
+- 뽑기 비용: `data.js`의 `HIDDEN_DRAW_COST`
+- 아이템 목록과 확률 가중치: `HIDDEN_GACHA_ITEMS`
+
+```js
+export const HIDDEN_DRAW_COST = 250;
+
+{ id: 'hidden-crown', name: '밤하늘 왕관', emoji: '💫', slot: 'hat', weight: 12 }
+```
+
+`weight` 값이 클수록 당첨 확률이 높습니다. 앱 화면에서는 획득 전 이름과 모습을 공개하지 않습니다. 정적 웹앱은 소스가 브라우저에 전달되므로 실제 운영 서비스에서는 서버에서 추첨을 처리해야 합니다.
+
+## 친구 기능 방식
+
+현재 버전은 데이터베이스 없이 실행되는 공모전용 MVP입니다.
+
+1. 각 사용자가 자신의 하곰 공유 코드를 복사합니다.
+2. 서로 코드를 교환해 친구 목록에 추가합니다.
+3. 친구 목록에서 상대가 공유한 착용 상태를 확인합니다.
+4. 친구가 꾸미기를 바꾸면 새 코드를 다시 입력해 정보를 갱신합니다.
+
+로그인, 친구 요청·수락, 실시간 자동 갱신이 필요한 운영 버전은 Firebase 또는 Supabase 같은 인증·데이터베이스를 연결해야 합니다.
+
+## 주요 데이터 수정 위치
+
+- 랜드마크, QR, 위치, 랜덤 보상: `data.js`의 `LANDMARKS`
+- 미션: `MISSIONS`
+- 일반 상점: `SHOP_ITEMS`
+- 히든 뽑기: `HIDDEN_GACHA_ITEMS`
+- 우정 뱃지: `FRIENDSHIP_BADGE`
+
+## 실제 운영 전 확인 사항
+
+- 랜드마크 위도·경도와 GPS 반경 정확성
+- QR 코드 실제 출력 및 현장 테스트
+- 반복 방문 악용 방지를 위한 시간 제한 또는 일일 횟수 제한
+- 실시간 친구 기능용 로그인·데이터베이스
+- 개인정보 처리방침과 이용약관

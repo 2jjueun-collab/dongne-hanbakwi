@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 520" role="img" aria-labelledby="title desc">
+  <title id="title">하곰 캐릭터 임시 이미지</title>
+  <desc id="desc">사용자가 제공한 하곰 이미지로 교체할 수 있는 흰색 곰 캐릭터</desc>
+  <defs>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="8" flood-opacity=".18"/></filter>
+  </defs>
+  <ellipse cx="210" cy="477" rx="126" ry="24" fill="#153d35" opacity=".18"/>
+  <g filter="url(#shadow)" stroke="#183a34" stroke-width="10" stroke-linejoin="round">
+    <ellipse cx="132" cy="118" rx="55" ry="59" fill="#fffdf7"/>
+    <ellipse cx="288" cy="118" rx="55" ry="59" fill="#fffdf7"/>
+    <ellipse cx="132" cy="118" rx="25" ry="29" fill="#e9c8bd" stroke="none"/>
+    <ellipse cx="288" cy="118" rx="25" ry="29" fill="#e9c8bd" stroke="none"/>
+    <path d="M100 286c-44 28-57 92-37 137 10 23 38 24 54 8 22-23 25-87 20-122z" fill="#fffdf7"/>
+    <path d="M320 286c44 28 57 92 37 137-10 23-38 24-54 8-22-23-25-87-20-122z" fill="#fffdf7"/>
+    <path d="M136 404c-26 15-34 58-18 78 13 16 48 13 58-4 12-20 7-62-6-78z" fill="#fffdf7"/>
+    <path d="M284 404c26 15 34 58 18 78-13 16-48 13-58-4-12-20-7-62 6-78z" fill="#fffdf7"/>
+    <path d="M107 263c0-71 46-118 103-118s103 47 103 118v145c0 43-41 61-103 61S107 451 107 408z" fill="#fffdf7"/>
+    <ellipse cx="210" cy="211" rx="132" ry="118" fill="#fffdf7"/>
+  </g>
+  <ellipse cx="165" cy="211" rx="11" ry="16" fill="#183a34"/>
+  <ellipse cx="255" cy="211" rx="11" ry="16" fill="#183a34"/>
+  <ellipse cx="210" cy="253" rx="54" ry="42" fill="#f0e7df"/>
+  <path d="M195 242c0-10 8-17 15-17s15 7 15 17c0 9-8 15-15 15s-15-6-15-15z" fill="#183a34"/>
+  <path d="M210 256v17m0 0c-13 0-22 6-25 14m25-14c13 0 22 6 25 14" fill="none" stroke="#183a34" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="210" cy="369" rx="74" ry="58" fill="#dceda6"/>
+  <text x="210" y="380" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="31" fill="#173f35">하곰</text>
+</svg>
