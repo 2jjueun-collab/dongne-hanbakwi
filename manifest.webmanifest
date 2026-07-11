@@ -1,0 +1,13 @@
+{
+  "name": "동네 한 바퀴",
+  "short_name": "동네한바퀴",
+  "description": "경산의 랜드마크를 방문하고 지역 아이템을 수집하는 위치 기반 탐험 웹앱",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6f2e7",
+  "theme_color": "#173f35",
+  "lang": "ko",
+  "icons": [
+    { "src": "./assets/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
