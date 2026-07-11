@@ -1,4 +1,11 @@
-import { CATEGORIES, LANDMARKS, MISSIONS } from './data.js';
+import {
+  CATEGORIES,
+  HIDDEN_ITEM,
+  HIDDEN_ITEM_CODE,
+  LANDMARKS,
+  MISSIONS,
+  SHOP_ITEMS
+} from './data.js';
 
 const STORAGE_KEY = 'dongne-hanbakwi-state-v1';
 const DEFAULT_STATE = {
@@ -6,6 +13,9 @@ const DEFAULT_STATE = {
   equipped: { hat: null, hand: null, neck: null, chest: null },
   claimedMissions: [],
   bonusPoints: 0,
+  purchasedItems: [],
+  unlockedHiddenItems: [],
+  spentPoints: 0,
   selectedCategory: '전체',
   currentLocation: null
 };
@@ -20,6 +30,7 @@ const elements = {
   visitedCount: $('#visitedCount'),
   itemCount: $('#itemCount'),
   pointCount: $('#pointCount'),
+  shopPointCount: $('#shopPointCount'),
   locationTitle: $('#locationTitle'),
   locationText: $('#locationText'),
   locateButton: $('#locateButton'),
@@ -28,6 +39,7 @@ const elements = {
   heroCharacter: $('#heroCharacter'),
   characterStage: $('#characterStage'),
   inventoryGrid: $('#inventoryGrid'),
+  shopGrid: $('#shopGrid'),
   collectionGrid: $('#collectionGrid'),
   missionList: $('#missionList'),
   collectionProgress: $('#collectionProgress'),
@@ -40,13 +52,25 @@ const elements = {
   verifyDescription: $('#verifyDescription'),
   verifyMessage: $('#verifyMessage'),
   qrCodeInput: $('#qrCodeInput'),
+  hiddenCodeInput: $('#hiddenCodeInput'),
+  hiddenCodeMessage: $('#hiddenCodeMessage'),
   toast: $('#toast')
 };
 
 function loadState() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return { ...DEFAULT_STATE, ...saved, equipped: { ...DEFAULT_STATE.equipped, ...(saved?.equipped || {}) } };
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    return {
+      ...structuredClone(DEFAULT_STATE),
+      ...saved,
+      visited: Array.isArray(saved.visited) ? saved.visited : [],
+      claimedMissions: Array.isArray(saved.claimedMissions) ? saved.claimedMissions : [],
+      purchasedItems: Array.isArray(saved.purchasedItems) ? saved.purchasedItems : [],
+      unlockedHiddenItems: Array.isArray(saved.unlockedHiddenItems) ? saved.unlockedHiddenItems : [],
+      equipped: { ...DEFAULT_STATE.equipped, ...(saved.equipped || {}) },
+      spentPoints: Number.isFinite(saved.spentPoints) ? Math.max(0, saved.spentPoints) : 0,
+      bonusPoints: Number.isFinite(saved.bonusPoints) ? Math.max(0, saved.bonusPoints) : 0
+    };
   } catch {
     return structuredClone(DEFAULT_STATE);
   }
@@ -56,14 +80,37 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function totalPoints() {
+function earnedPoints() {
   const visitPoints = LANDMARKS.filter((item) => state.visited.includes(item.id))
     .reduce((sum, item) => sum + item.points, 0);
   return visitPoints + state.bonusPoints;
 }
 
+function availablePoints() {
+  return Math.max(0, earnedPoints() - state.spentPoints);
+}
+
+function dedupeItems(items) {
+  return [...new Map(items.map((item) => [item.id, item])).values()];
+}
+
 function ownedItems() {
-  return LANDMARKS.filter((item) => state.visited.includes(item.id)).map((item) => item.reward);
+  const landmarkItems = LANDMARKS
+    .filter((item) => state.visited.includes(item.id))
+    .map((item) => item.reward);
+  const purchased = SHOP_ITEMS.filter((item) => state.purchasedItems.includes(item.id));
+  const hidden = state.unlockedHiddenItems.includes(HIDDEN_ITEM.id) ? [HIDDEN_ITEM] : [];
+  return dedupeItems([...landmarkItems, ...purchased, ...hidden]);
+}
+
+function collectionItems() {
+  const landmarkItems = LANDMARKS.map((landmark) => ({
+    ...landmark.reward,
+    source: landmark.shortName,
+    unlockType: 'visit'
+  }));
+  const shopItems = SHOP_ITEMS.map((item) => ({ ...item, source: '포인트 상점', unlockType: 'shop' }));
+  return [...landmarkItems, ...shopItems, { ...HIDDEN_ITEM, source: '히든 코드', unlockType: 'hidden' }];
 }
 
 function distanceMeters(aLat, aLng, bLat, bLng) {
@@ -87,11 +134,21 @@ function characterMarkup(size = 'normal') {
   const equippedItems = Object.values(state.equipped)
     .map((id) => items.find((item) => item.id === id))
     .filter(Boolean);
-  const itemLayer = equippedItems.map((item) => `<span class="equipped-item slot-${item.slot}" aria-label="${item.name}">${item.emoji}</span>`).join('');
-  return `<div class="character ${size}">
+  const itemLayer = equippedItems
+    .map((item) => `<span class="equipped-item slot-${item.slot}" aria-label="${item.name}">${item.emoji}</span>`)
+    .join('');
+
+  return `<div class="character ${size}" aria-label="아이템을 착용한 흰곰 캐릭터">
     <div class="character-shadow"></div>
-    <div class="character-body"><span class="eye left"></span><span class="eye right"></span><span class="mouth"></span></div>
-    <div class="character-shirt"><span>경산</span></div>${itemLayer}
+    <span class="bear-leg left"></span><span class="bear-leg right"></span>
+    <div class="bear-body"><span class="bear-belly">경산</span></div>
+    <span class="bear-arm left"></span><span class="bear-arm right"></span>
+    <span class="bear-ear left"><i></i></span><span class="bear-ear right"><i></i></span>
+    <div class="bear-head">
+      <span class="eye left"></span><span class="eye right"></span>
+      <span class="bear-muzzle"><i class="bear-nose"></i><i class="bear-mouth"></i></span>
+    </div>
+    ${itemLayer}
   </div>`;
 }
 
@@ -102,19 +159,24 @@ function renderCharacter() {
 
 function renderStats() {
   const visited = state.visited.length;
+  const items = ownedItems();
+  const allItems = collectionItems();
+  const progress = Math.round((items.length / allItems.length) * 100);
+
   elements.visitedCount.textContent = visited;
-  elements.itemCount.textContent = ownedItems().length;
-  elements.pointCount.textContent = totalPoints().toLocaleString('ko-KR');
-  const progress = Math.round((visited / LANDMARKS.length) * 100);
+  elements.itemCount.textContent = items.length;
+  elements.pointCount.textContent = availablePoints().toLocaleString('ko-KR');
+  elements.shopPointCount.textContent = availablePoints().toLocaleString('ko-KR');
   elements.collectionProgress.textContent = `${progress}%`;
   elements.collectionProgressBar.style.width = `${progress}%`;
-  elements.ownedSummary.textContent = `${ownedItems().length}개 보유`;
+  elements.ownedSummary.textContent = `${items.length}개 보유`;
 }
 
 function renderFilters() {
   elements.filters.innerHTML = CATEGORIES.map((category) => `
     <button type="button" class="filter-chip ${state.selectedCategory === category ? 'active' : ''}" data-category="${category}">${category}</button>
   `).join('');
+
   elements.filters.querySelectorAll('[data-category]').forEach((button) => {
     button.addEventListener('click', () => {
       state.selectedCategory = button.dataset.category;
@@ -160,24 +222,63 @@ function renderLandmarks() {
 function renderInventory() {
   const items = ownedItems();
   if (!items.length) {
-    elements.inventoryGrid.innerHTML = '<div class="empty-state">아직 보유한 아이템이 없습니다.<br />탐험지에서 첫 아이템을 획득해 보세요.</div>';
+    elements.inventoryGrid.innerHTML = '<div class="empty-state">아직 보유한 아이템이 없습니다.<br />탐험하거나 포인트 상점을 이용해 보세요.</div>';
     return;
   }
+
   elements.inventoryGrid.innerHTML = items.map((item) => {
     const equipped = state.equipped[item.slot] === item.id;
     return `<button class="inventory-item ${equipped ? 'equipped' : ''}" type="button" data-equip="${item.id}">
-      <span>${item.emoji}</span><strong>${item.name}</strong><small>${equipped ? '착용 중' : '눌러서 착용'}</small>
+      <span>${item.emoji}</span><strong>${item.name}</strong><small>${equipped ? '착용 중 · 눌러서 해제' : '눌러서 착용'}</small>
     </button>`;
   }).join('');
+
   elements.inventoryGrid.querySelectorAll('[data-equip]').forEach((button) => button.addEventListener('click', () => toggleEquip(button.dataset.equip)));
 }
 
+function renderShop() {
+  const balance = availablePoints();
+  elements.shopGrid.innerHTML = SHOP_ITEMS.map((item) => {
+    const purchased = state.purchasedItems.includes(item.id);
+    const affordable = balance >= item.price;
+    const buttonText = purchased ? '구매 완료' : affordable ? `${item.price}P로 구매` : `${item.price - balance}P 부족`;
+    return `<article class="shop-item ${purchased ? 'purchased' : ''}">
+      <div class="shop-item-art">${item.emoji}</div>
+      <div class="shop-item-copy"><span>${slotLabel(item.slot)}</span><h3>${item.name}</h3><p>${item.description}</p></div>
+      <div class="shop-item-footer"><strong>${item.price}P</strong><button class="${purchased ? 'secondary-button' : 'primary-button'} compact" type="button" data-buy="${item.id}" ${purchased || !affordable ? 'disabled' : ''}>${buttonText}</button></div>
+    </article>`;
+  }).join('');
+
+  elements.shopGrid.querySelectorAll('[data-buy]').forEach((button) => button.addEventListener('click', () => buyItem(button.dataset.buy)));
+
+  const hiddenUnlocked = state.unlockedHiddenItems.includes(HIDDEN_ITEM.id);
+  elements.hiddenCodeInput.disabled = hiddenUnlocked;
+  $('#hiddenCodeButton').disabled = hiddenUnlocked;
+  if (hiddenUnlocked) {
+    elements.hiddenCodeInput.value = '';
+    elements.hiddenCodeInput.placeholder = '이미 해금됨';
+    elements.hiddenCodeMessage.textContent = `${HIDDEN_ITEM.emoji} ${HIDDEN_ITEM.name} 해금 완료`;
+    elements.hiddenCodeMessage.classList.add('success');
+  } else {
+    elements.hiddenCodeInput.placeholder = '코드 입력';
+    if (elements.hiddenCodeMessage.textContent.includes('해금 완료')) elements.hiddenCodeMessage.textContent = '';
+    elements.hiddenCodeMessage.classList.remove('success');
+  }
+}
+
+function slotLabel(slot) {
+  const labels = { hat: '머리', hand: '손', neck: '목', chest: '가슴' };
+  return labels[slot] || '소품';
+}
+
 function renderCollection() {
-  elements.collectionGrid.innerHTML = LANDMARKS.map((item) => {
-    const unlocked = state.visited.includes(item.id);
+  const ownedIds = new Set(ownedItems().map((item) => item.id));
+  elements.collectionGrid.innerHTML = collectionItems().map((item) => {
+    const unlocked = ownedIds.has(item.id);
+    const hiddenLocked = item.unlockType === 'hidden' && !unlocked;
     return `<article class="collection-item ${unlocked ? 'unlocked' : 'locked'}">
-      <span class="collection-art">${unlocked ? item.reward.emoji : '？'}</span>
-      <div><small>${item.shortName}</small><strong>${unlocked ? item.reward.name : '미발견 아이템'}</strong></div>
+      <span class="collection-art">${unlocked ? item.emoji : '？'}</span>
+      <div><small>${hiddenLocked ? '비밀 아이템' : item.source}</small><strong>${unlocked ? item.name : hiddenLocked ? '???' : '미획득 아이템'}</strong></div>
     </article>`;
   }).join('');
 }
@@ -197,6 +298,7 @@ function renderMissions() {
       <button class="${complete && !claimed ? 'primary-button' : 'secondary-button'} compact" type="button" data-claim="${mission.id}" ${!complete || claimed ? 'disabled' : ''}>${claimed ? '수령 완료' : complete ? '보상 받기' : '진행 중'}</button>
     </article>`;
   }).join('');
+
   elements.missionList.querySelectorAll('[data-claim]').forEach((button) => button.addEventListener('click', () => claimMission(button.dataset.claim)));
 
   const couponUnlocked = state.visited.length >= 3;
@@ -210,6 +312,7 @@ function renderAll() {
   renderLandmarks();
   renderCharacter();
   renderInventory();
+  renderShop();
   renderCollection();
   renderMissions();
 }
@@ -233,7 +336,7 @@ function unlockLandmark(id, method = 'GPS') {
   saveState();
   renderAll();
   if (elements.verifyDialog.open) elements.verifyDialog.close();
-  showToast(isNew ? `${landmark.reward.emoji} ${landmark.reward.name} 획득! (${method})` : `${landmark.name}은 이미 인증된 장소입니다.`);
+  showToast(isNew ? `${landmark.reward.emoji} ${landmark.reward.name} + ${landmark.points}P 획득! (${method})` : `${landmark.name}은 이미 인증된 장소입니다.`);
 }
 
 function verifyActiveByGps() {
@@ -256,6 +359,7 @@ function requestLocation(onSuccess, onError) {
     onError?.('이 브라우저는 위치 기능을 지원하지 않습니다.');
     return;
   }
+
   navigator.geolocation.getCurrentPosition((position) => {
     const payload = { lat: position.coords.latitude, lng: position.coords.longitude, accuracy: position.coords.accuracy };
     state.currentLocation = payload;
@@ -284,6 +388,42 @@ function toggleEquip(id) {
   renderInventory();
 }
 
+function buyItem(id) {
+  const item = SHOP_ITEMS.find((candidate) => candidate.id === id);
+  if (!item || state.purchasedItems.includes(id)) return;
+  if (availablePoints() < item.price) {
+    showToast('포인트가 부족합니다. 탐험이나 미션을 완료해 주세요.');
+    return;
+  }
+
+  state.purchasedItems.push(id);
+  state.spentPoints += item.price;
+  saveState();
+  renderAll();
+  showToast(`${item.emoji} ${item.name}을 구매했습니다. ${item.price}P 사용`);
+}
+
+function redeemHiddenItem() {
+  if (state.unlockedHiddenItems.includes(HIDDEN_ITEM.id)) {
+    elements.hiddenCodeMessage.textContent = '이미 히든 아이템을 해금했습니다.';
+    elements.hiddenCodeMessage.classList.add('success');
+    return;
+  }
+
+  const code = elements.hiddenCodeInput.value.trim().toUpperCase();
+  if (code !== HIDDEN_ITEM_CODE.toUpperCase()) {
+    elements.hiddenCodeMessage.textContent = '히든 코드가 일치하지 않습니다.';
+    elements.hiddenCodeMessage.classList.remove('success');
+    return;
+  }
+
+  state.unlockedHiddenItems.push(HIDDEN_ITEM.id);
+  saveState();
+  elements.hiddenCodeInput.value = '';
+  renderAll();
+  showToast(`${HIDDEN_ITEM.emoji} 히든 아이템 ${HIDDEN_ITEM.name} 해금!`);
+}
+
 function claimMission(id) {
   const mission = MISSIONS.find((item) => item.id === id);
   if (!mission || missionProgress(mission) < mission.target || state.claimedMissions.includes(id)) return;
@@ -304,14 +444,15 @@ function showToast(message) {
 function navigate(target) {
   $$('.view').forEach((view) => view.classList.toggle('active', view.dataset.view === target));
   $$('.nav-item').forEach((button) => button.classList.toggle('active', button.dataset.target === target));
+  if (location.hash !== `#${target}`) history.replaceState(null, '', `#${target}`);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function shareProgress() {
-  const text = `동네 한 바퀴에서 경산 랜드마크 ${state.visited.length}곳을 탐험하고 ${ownedItems().length}개 아이템을 모았어요! #동네한바퀴 #경산탐험`;
+  const text = `동네 한 바퀴에서 경산 랜드마크 ${state.visited.length}곳을 탐험하고 흰곰 아이템 ${ownedItems().length}개를 모았어요! #동네한바퀴 #경산탐험`;
   try {
     if (navigator.share) {
-      await navigator.share({ title: '나의 경산 탐험 기록', text, url: location.href });
+      await navigator.share({ title: '나의 경산 흰곰 탐험 기록', text, url: location.href });
     } else {
       await navigator.clipboard.writeText(`${text}\n${location.href}`);
       showToast('공유 문구를 클립보드에 복사했습니다.');
@@ -322,12 +463,13 @@ async function shareProgress() {
 }
 
 function resetProgress() {
-  if (!confirm('방문 기록, 아이템, 포인트를 모두 초기화할까요?')) return;
+  if (!confirm('방문 기록, 구매 아이템, 포인트를 모두 초기화할까요?')) return;
   state = structuredClone(DEFAULT_STATE);
   localStorage.removeItem(STORAGE_KEY);
   elements.locationTitle.textContent = '현재 위치를 확인해 주세요';
   elements.locationText.textContent = 'GPS 인증은 HTTPS 환경에서 작동합니다.';
   elements.locateButton.textContent = '내 위치 확인';
+  elements.hiddenCodeMessage.textContent = '';
   renderAll();
   navigate('explore');
   showToast('진행 상황을 초기화했습니다.');
@@ -344,17 +486,24 @@ $('#codeVerifyButton').addEventListener('click', () => {
   if (landmark && input === landmark.qrCode.toUpperCase()) unlockLandmark(landmark.id, 'QR');
   else elements.verifyMessage.textContent = 'QR 코드 값이 일치하지 않습니다.';
 });
+$('#hiddenCodeButton').addEventListener('click', redeemHiddenItem);
+elements.hiddenCodeInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    redeemHiddenItem();
+  }
+});
 $('#demoAllButton').addEventListener('click', () => {
   LANDMARKS.forEach((item) => { if (!state.visited.includes(item.id)) state.visited.push(item.id); });
   saveState();
   renderAll();
-  showToast('심사용으로 모든 장소와 아이템을 해금했습니다.');
+  showToast('모든 장소와 방문 보상을 해금했습니다. 상점 구매는 포인트를 사용합니다.');
 });
 $('#shareButton').addEventListener('click', shareProgress);
 
 window.addEventListener('hashchange', () => {
   const target = location.hash.slice(1);
-  if (['explore', 'character', 'collection', 'mission'].includes(target)) navigate(target);
+  if (['explore', 'character', 'shop', 'collection', 'mission'].includes(target)) navigate(target);
 });
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
@@ -362,3 +511,5 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 }
 
 renderAll();
+const initialTarget = location.hash.slice(1);
+if (['explore', 'character', 'shop', 'collection', 'mission'].includes(initialTarget)) navigate(initialTarget);

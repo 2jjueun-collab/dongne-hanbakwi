@@ -91,4 +91,23 @@ export const MISSIONS = [
   { id: 'all', title: '경산 한 바퀴', description: '등록된 랜드마크 모두 방문하기', target: LANDMARKS.length, reward: 500 }
 ];
 
+export const SHOP_ITEMS = [
+  { id: 'red-scarf', name: '빨간 목도리', emoji: '🧣', slot: 'neck', price: 180, description: '흰곰 탐험가의 포인트 컬러' },
+  { id: 'green-cap', name: '초록 탐험 모자', emoji: '🧢', slot: 'hat', price: 220, description: '동네 탐험에 어울리는 모자' },
+  { id: 'heart-balloon', name: '하트 풍선', emoji: '🎈', slot: 'hand', price: 260, description: '사진 카드에 포인트를 더하는 소품' },
+  { id: 'clover-badge', name: '행운 클로버', emoji: '🍀', slot: 'chest', price: 160, description: '오늘의 탐험에 행운을 더하는 배지' },
+  { id: 'gold-crown', name: '황금 왕관', emoji: '👑', slot: 'hat', price: 420, description: '포인트를 모은 탐험가의 상징' },
+  { id: 'travel-bag', name: '여행 가방', emoji: '🎒', slot: 'hand', price: 300, description: '다음 동네로 떠날 준비를 위한 가방' }
+];
+
+export const HIDDEN_ITEM = {
+  id: 'starlight-crown',
+  name: '별빛 곰 왕관',
+  emoji: '🌟',
+  slot: 'hat',
+  description: '히든 코드를 발견한 탐험가 전용 아이템'
+};
+
+export const HIDDEN_ITEM_CODE = 'YUKK-BEAR-26';
+
 export const CATEGORIES = ['전체', ...new Set(LANDMARKS.map((item) => item.category))];
