@@ -10,9 +10,15 @@ import {
   SHOP_ITEMS
 } from './data.js';
 
-const STORAGE_KEY = 'dongne-hanbakwi-hagom-state-v3';
+const STORAGE_KEY = 'dongne-hanbakwi-hagom-state-v4';
+const PREVIOUS_STORAGE_KEY = 'dongne-hanbakwi-hagom-state-v3';
 const LEGACY_KEY = 'dongne-hanbakwi-state-v1';
-const NAV_TARGETS = ['explore', 'character', 'shop', 'friends', 'collection', 'mission'];
+const NAV_TARGETS = ['explore', 'steps', 'character', 'shop', 'friends', 'collection', 'mission'];
+const STEP_GOAL = 10000;
+const STEP_STRIDE_METERS = 0.68;
+const STEP_CALORIES = 0.04;
+const STEP_REWARD_INTERVAL = 1000;
+const STEP_REWARD_POINTS = 10;
 
 const LANDMARK_ITEMS = LANDMARKS.flatMap((landmark) => landmark.rewards.map((item) => ({ ...item, source: landmark.shortName, unlockType: 'visit' })));
 const SHOP_CATALOG = SHOP_ITEMS.map((item) => ({ ...item, source: '포인트 상점', unlockType: 'shop' }));
@@ -30,12 +36,18 @@ const DEFAULT_STATE = {
   selectedCategory: '전체',
   currentLocation: null,
   friends: [],
+  steps: { date: '', count: 0, rewardedMilestones: 0 },
   profile: { id: '', name: '하곰' }
 };
 
 let state = loadState();
+ensureTodaySteps();
 let activeLandmarkId = null;
 let activeFriendId = null;
+let pedometerRunning = false;
+let motionBaseline = null;
+let lastMotionValue = null;
+let lastDetectedStepAt = 0;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -55,7 +67,12 @@ const elements = {
   friendCount: $('#friendCount'), friendList: $('#friendList'), profileNameInput: $('#profileNameInput'),
   myFriendCode: $('#myFriendCode'), friendCodeInput: $('#friendCodeInput'), friendMessage: $('#friendMessage'),
   friendDialog: $('#friendDialog'), friendDialogTitle: $('#friendDialogTitle'), friendDialogCharacter: $('#friendDialogCharacter'),
-  friendDialogItems: $('#friendDialogItems'), toast: $('#toast')
+  friendDialogItems: $('#friendDialogItems'), friendDialogSteps: $('#friendDialogSteps'),
+  todayStepCount: $('#todayStepCount'), stepDistance: $('#stepDistance'), stepCalories: $('#stepCalories'),
+  stepRewardPoints: $('#stepRewardPoints'), stepGoalText: $('#stepGoalText'), stepProgressBar: $('#stepProgressBar'),
+  stepStatus: $('#stepStatus'), pedometerToggleButton: $('#pedometerToggleButton'), stepHagom: $('#stepHagom'),
+  stepDateLabel: $('#stepDateLabel'), stepPodium: $('#stepPodium'), stepRankingList: $('#stepRankingList'),
+  rankingMemberCount: $('#rankingMemberCount'), toast: $('#toast')
 };
 
 function cloneDefaultState() {
@@ -74,9 +91,47 @@ function normalizeCountMap(value) {
     .map(([key, count]) => [key, Math.floor(Number(count))]));
 }
 
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeSteps(value) {
+  return {
+    date: typeof value?.date === 'string' ? value.date : '',
+    count: Math.max(0, Math.floor(Number(value?.count) || 0)),
+    rewardedMilestones: Math.max(0, Math.floor(Number(value?.rewardedMilestones) || 0))
+  };
+}
+
+function ensureTodaySteps() {
+  const today = localDateKey();
+  state.steps = normalizeSteps(state.steps);
+  if (state.steps.date !== today) {
+    state.steps = { date: today, count: 0, rewardedMilestones: 0 };
+  }
+}
+
+function todayStepCount() {
+  ensureTodaySteps();
+  return state.steps.count;
+}
+
+function friendStepsToday(friend) {
+  return friend?.stepDate === localDateKey() ? Math.max(0, Math.floor(Number(friend.steps) || 0)) : 0;
+}
+
+function formatKoreanDate(dateKey = localDateKey()) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  if (!year || !month || !day) return '오늘';
+  return `${month}월 ${day}일`;
+}
+
 function loadState() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || localStorage.getItem(PREVIOUS_STORAGE_KEY));
     if (saved) {
       const merged = {
         ...cloneDefaultState(), ...saved,
@@ -85,7 +140,8 @@ function loadState() {
         equipped: { ...DEFAULT_STATE.equipped, ...(saved.equipped || {}) },
         claimedMissions: Array.isArray(saved.claimedMissions) ? saved.claimedMissions : [],
         purchasedItems: Array.isArray(saved.purchasedItems) ? saved.purchasedItems : [],
-        friends: Array.isArray(saved.friends) ? saved.friends.filter(validFriendSnapshot) : [],
+        friends: Array.isArray(saved.friends) ? saved.friends.map(normalizeFriendSnapshot).filter(validFriendSnapshot) : [],
+        steps: normalizeSteps(saved.steps),
         profile: { ...DEFAULT_STATE.profile, ...(saved.profile || {}) },
         pointsEarned: Math.max(0, Number(saved.pointsEarned) || 0),
         spentPoints: Math.max(0, Number(saved.spentPoints) || 0)
@@ -233,6 +289,7 @@ function characterMarkup(size = 'normal', equippedItems = getEquippedItems()) {
 function renderCharacter() {
   elements.heroCharacter.innerHTML = characterMarkup('small');
   elements.characterStage.innerHTML = characterMarkup('large');
+  if (elements.stepHagom) elements.stepHagom.innerHTML = characterMarkup('step-size');
 }
 
 function renderStats() {
@@ -396,13 +453,17 @@ function renderFriendCode() {
 }
 
 function createFriendCode() {
+  ensureTodaySteps();
   const payload = {
-    v: 1,
+    v: 2,
     id: state.profile.id,
     name: state.profile.name,
-    equippedItems: getEquippedItems().map(({ id, name, emoji, slot }) => ({ id, name, emoji, slot }))
+    equippedItems: getEquippedItems().map(({ id, name, emoji, slot }) => ({ id, name, emoji, slot })),
+    steps: state.steps.count,
+    stepDate: state.steps.date,
+    updatedAt: Date.now()
   };
-  return `HGM1.${encodeBase64Url(JSON.stringify(payload))}`;
+  return `HGM2.${encodeBase64Url(JSON.stringify(payload))}`;
 }
 
 function encodeBase64Url(text) {
@@ -422,8 +483,9 @@ function decodeBase64Url(text) {
 
 function parseFriendCode(code) {
   const trimmed = code.trim();
-  if (!trimmed.startsWith('HGM1.')) throw new Error('하곰 공유 코드 형식이 아닙니다.');
-  const parsed = JSON.parse(decodeBase64Url(trimmed.slice(5)));
+  const prefix = trimmed.startsWith('HGM2.') ? 'HGM2.' : trimmed.startsWith('HGM1.') ? 'HGM1.' : null;
+  if (!prefix) throw new Error('하곰 공유 코드 형식이 아닙니다.');
+  const parsed = JSON.parse(decodeBase64Url(trimmed.slice(prefix.length)));
   const friend = normalizeFriendSnapshot(parsed);
   if (!validFriendSnapshot(friend)) throw new Error('친구 코드에 필요한 정보가 없습니다.');
   return friend;
@@ -438,7 +500,10 @@ function normalizeFriendSnapshot(value) {
       name: String(item?.name || '아이템').slice(0, 30),
       emoji: String(item?.emoji || '•').slice(0, 8),
       slot: ['hat', 'hand', 'neck', 'chest', 'back'].includes(item?.slot) ? item.slot : 'hand'
-    })) : []
+    })) : [],
+    steps: Math.max(0, Math.floor(Number(value?.steps) || 0)),
+    stepDate: typeof value?.stepDate === 'string' ? value.stepDate.slice(0, 10) : '',
+    updatedAt: Math.max(0, Number(value?.updatedAt) || 0)
   };
 }
 
@@ -449,16 +514,183 @@ function validFriendSnapshot(friend) {
 function renderFriends() {
   elements.friendCount.textContent = `${state.friends.length}명`;
   if (!state.friends.length) {
-    elements.friendList.innerHTML = '<div class="empty-friends">아직 추가한 친구가 없습니다.<br />공유 코드를 교환하면 서로의 하곰 꾸미기를 볼 수 있습니다.</div>';
+    elements.friendList.innerHTML = '<div class="empty-friends">아직 추가한 친구가 없습니다.<br />공유 코드를 교환하면 서로의 하곰 꾸미기와 오늘 걸음 수를 볼 수 있습니다.</div>';
     return;
   }
-  elements.friendList.innerHTML = state.friends.map((friend) => `<button class="friend-card" type="button" data-friend="${escapeHTML(friend.id)}">
-    <div class="friend-preview">${characterMarkup('friend-size', friend.equippedItems)}</div>
-    <div class="friend-card-copy"><small>FRIEND</small><h3>${escapeHTML(friend.name)}</h3><p>${friend.equippedItems.length ? escapeHTML(friend.equippedItems.map((item) => `${item.emoji} ${item.name}`).join(' · ')) : '착용한 아이템이 없습니다.'}</p><strong>꾸미기 자세히 보기 →</strong></div>
-  </button>`).join('');
+  elements.friendList.innerHTML = state.friends.map((friend) => {
+    const steps = friendStepsToday(friend);
+    const stepLabel = friend.stepDate === localDateKey() ? `오늘 ${steps.toLocaleString('ko-KR')}걸음` : '오늘 기록 업데이트 필요';
+    return `<button class="friend-card" type="button" data-friend="${escapeHTML(friend.id)}">
+      <div class="friend-preview">${characterMarkup('friend-size', friend.equippedItems)}</div>
+      <div class="friend-card-copy"><small>FRIEND</small><h3>${escapeHTML(friend.name)}</h3><b class="friend-step-chip">👟 ${escapeHTML(stepLabel)}</b><p>${friend.equippedItems.length ? escapeHTML(friend.equippedItems.map((item) => `${item.emoji} ${item.name}`).join(' · ')) : '착용한 아이템이 없습니다.'}</p><strong>기록과 꾸미기 보기 →</strong></div>
+    </button>`;
+  }).join('');
   elements.friendList.querySelectorAll('[data-friend]').forEach((button) =>
     button.addEventListener('click', () => openFriend(button.dataset.friend))
   );
+}
+
+
+function rankingEntries() {
+  const me = {
+    id: state.profile.id,
+    name: `${state.profile.name} (나)`,
+    steps: todayStepCount(),
+    equippedItems: getEquippedItems(),
+    isMe: true
+  };
+  const friends = state.friends.map((friend) => ({
+    id: friend.id,
+    name: friend.name,
+    steps: friendStepsToday(friend),
+    equippedItems: friend.equippedItems,
+    isMe: false,
+    stale: friend.stepDate !== localDateKey()
+  }));
+  return [me, ...friends]
+    .sort((a, b) => b.steps - a.steps || Number(b.isMe) - Number(a.isMe) || a.name.localeCompare(b.name, 'ko'));
+}
+
+function rankMedal(index) {
+  return ['🥇', '🥈', '🥉'][index] || `${index + 1}`;
+}
+
+function renderSteps() {
+  if (!elements.todayStepCount) return;
+  ensureTodaySteps();
+  const count = state.steps.count;
+  const distanceKm = count * STEP_STRIDE_METERS / 1000;
+  const calories = count * STEP_CALORIES;
+  const earned = state.steps.rewardedMilestones * STEP_REWARD_POINTS;
+  const progress = Math.min(100, count / STEP_GOAL * 100);
+
+  elements.todayStepCount.textContent = count.toLocaleString('ko-KR');
+  elements.stepDistance.textContent = distanceKm.toFixed(1);
+  elements.stepCalories.textContent = Math.round(calories).toLocaleString('ko-KR');
+  elements.stepRewardPoints.textContent = earned.toLocaleString('ko-KR');
+  elements.stepGoalText.textContent = count.toLocaleString('ko-KR');
+  elements.stepProgressBar.style.width = `${progress}%`;
+  elements.stepDateLabel.textContent = formatKoreanDate(state.steps.date);
+  elements.pedometerToggleButton.textContent = pedometerRunning ? '만보기 중지' : '만보기 시작';
+  elements.pedometerToggleButton.classList.toggle('is-running', pedometerRunning);
+
+  const entries = rankingEntries();
+  elements.rankingMemberCount.textContent = `나 포함 ${entries.length}명`;
+  const top = entries.slice(0, 3);
+  elements.stepPodium.innerHTML = top.map((entry, index) => `<article class="podium-member rank-${index + 1} ${entry.isMe ? 'is-me' : ''}">
+    <div class="podium-rank">${rankMedal(index)}</div>
+    <div class="podium-hagom">${characterMarkup('podium-size', entry.equippedItems)}</div>
+    <strong>${escapeHTML(entry.name)}</strong>
+    <span>${entry.steps.toLocaleString('ko-KR')}걸음</span>
+  </article>`).join('');
+
+  elements.stepRankingList.innerHTML = entries.map((entry, index) => `<article class="ranking-row ${entry.isMe ? 'is-me' : ''}">
+    <b class="ranking-number">${rankMedal(index)}</b>
+    <div class="ranking-mini-hagom">${characterMarkup('rank-size', entry.equippedItems)}</div>
+    <div class="ranking-copy"><strong>${escapeHTML(entry.name)}</strong><small>${entry.stale ? '오늘 공유 코드 업데이트 필요' : entry.isMe ? '내 오늘 기록' : '친구가 공유한 오늘 기록'}</small></div>
+    <span>${entry.steps.toLocaleString('ko-KR')}<small>걸음</small></span>
+  </article>`).join('');
+}
+
+function addSteps(amount, source = 'manual') {
+  ensureTodaySteps();
+  const increase = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!increase) return;
+
+  const previousMilestones = Math.floor(state.steps.count / STEP_REWARD_INTERVAL);
+  state.steps.count = Math.min(999999, state.steps.count + increase);
+  const currentMilestones = Math.floor(state.steps.count / STEP_REWARD_INTERVAL);
+  const newMilestones = Math.max(0, currentMilestones - Math.max(previousMilestones, state.steps.rewardedMilestones));
+
+  if (newMilestones > 0) {
+    state.steps.rewardedMilestones = currentMilestones;
+    state.pointsEarned += newMilestones * STEP_REWARD_POINTS;
+    showToast(`${(newMilestones * STEP_REWARD_POINTS).toLocaleString('ko-KR')}P를 걸음 보상으로 적립했습니다.`);
+  }
+
+  saveState();
+  renderSteps();
+  renderStats();
+  renderFriendCode();
+
+  if (source === 'sensor') {
+    elements.stepStatus.textContent = `측정 중 · 마지막 걸음 ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+  }
+}
+
+function onDeviceMotion(event) {
+  if (!pedometerRunning) return;
+  const acceleration = event.accelerationIncludingGravity || event.acceleration;
+  if (!acceleration) return;
+  const x = Number(acceleration.x) || 0;
+  const y = Number(acceleration.y) || 0;
+  const z = Number(acceleration.z) || 0;
+  const magnitude = Math.sqrt(x * x + y * y + z * z);
+  motionBaseline = motionBaseline === null ? magnitude : motionBaseline * 0.88 + magnitude * 0.12;
+  const movement = Math.abs(magnitude - motionBaseline);
+  const smoothed = lastMotionValue === null ? movement : lastMotionValue * 0.55 + movement * 0.45;
+  lastMotionValue = smoothed;
+
+  const now = performance.now();
+  if (smoothed > 1.05 && now - lastDetectedStepAt > 320) {
+    lastDetectedStepAt = now;
+    addSteps(1, 'sensor');
+  }
+}
+
+async function togglePedometer() {
+  if (pedometerRunning) {
+    stopPedometer();
+    return;
+  }
+
+  if (!('DeviceMotionEvent' in window)) {
+    elements.stepStatus.textContent = '이 기기에서는 모션 센서를 사용할 수 없습니다. 발표용 버튼으로 화면을 테스트할 수 있습니다.';
+    showToast('휴대전화의 Chrome 또는 Safari에서 실행해 주세요.');
+    return;
+  }
+
+  try {
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      const permission = await DeviceMotionEvent.requestPermission();
+      if (permission !== 'granted') throw new Error('모션 센서 권한이 허용되지 않았습니다.');
+    }
+    motionBaseline = null;
+    lastMotionValue = null;
+    lastDetectedStepAt = 0;
+    window.addEventListener('devicemotion', onDeviceMotion, { passive: true });
+    pedometerRunning = true;
+    elements.stepStatus.textContent = '측정 중입니다. 휴대전화를 몸에 지니고 자연스럽게 걸어 주세요.';
+    renderSteps();
+  } catch (error) {
+    elements.stepStatus.textContent = error.message || '모션 센서를 시작하지 못했습니다.';
+  }
+}
+
+function stopPedometer() {
+  window.removeEventListener('devicemotion', onDeviceMotion);
+  pedometerRunning = false;
+  motionBaseline = null;
+  lastMotionValue = null;
+  elements.stepStatus.textContent = '측정을 중지했습니다. 다시 시작하면 오늘 기록에 이어서 측정합니다.';
+  renderSteps();
+}
+
+async function shareSteps() {
+  const count = todayStepCount();
+  const rank = rankingEntries().findIndex((entry) => entry.isMe) + 1;
+  const code = createFriendCode();
+  const text = `하곰과 오늘 ${count.toLocaleString('ko-KR')}걸음 걸었어요. 친구 순위 ${rank}위! 아래 하곰 코드를 추가하면 오늘 걸음 수와 꾸미기를 함께 볼 수 있어요.\n${code}`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: '하곰 만보기 기록', text, url: location.href });
+    } else {
+      await navigator.clipboard.writeText(`${text}\n${location.href}`);
+      showToast('걸음 기록과 하곰 코드를 복사했습니다.');
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') window.prompt('아래 기록을 복사해 친구에게 보내세요.', text);
+  }
 }
 
 function renderAll() {
@@ -466,6 +698,7 @@ function renderAll() {
   renderFilters();
   renderLandmarks();
   renderCharacter();
+  renderSteps();
   renderInventory();
   renderShop();
   renderCollection();
@@ -545,6 +778,7 @@ function toggleEquip(id) {
   state.equipped[item.slot] = state.equipped[item.slot] === id ? null : id;
   saveState();
   renderCharacter();
+  renderSteps();
   renderInventory();
   renderFriendCode();
 }
@@ -636,8 +870,14 @@ function upsertFriend(friend) {
 }
 
 function addDemoFriends() {
-  DEMO_FRIENDS.forEach(upsertFriend);
-  elements.friendMessage.textContent = '발표용 친구 프로필을 추가했습니다.';
+  const demoSteps = [8420, 6230, 3910];
+  DEMO_FRIENDS.forEach((friend, index) => upsertFriend({
+    ...friend,
+    steps: demoSteps[index] || 2500,
+    stepDate: localDateKey(),
+    updatedAt: Date.now() - index * 60000
+  }));
+  elements.friendMessage.textContent = '발표용 친구 프로필과 오늘 걸음 기록을 추가했습니다.';
   elements.friendMessage.classList.add('success');
   afterFriendChanged();
 }
@@ -658,6 +898,9 @@ function openFriend(id) {
   activeFriendId = id;
   elements.friendDialogTitle.textContent = friend.name;
   elements.friendDialogCharacter.innerHTML = characterMarkup('large', friend.equippedItems);
+  elements.friendDialogSteps.textContent = friend.stepDate === localDateKey()
+    ? `오늘 ${friendStepsToday(friend).toLocaleString('ko-KR')}걸음`
+    : '오늘 걸음 기록 업데이트 필요';
   elements.friendDialogItems.innerHTML = friend.equippedItems.length
     ? friend.equippedItems.map((item) => `<span>${escapeHTML(item.emoji)} ${escapeHTML(item.name)}</span>`).join('')
     : '<span>착용 아이템 없음</span>';
@@ -670,6 +913,7 @@ function removeActiveFriend() {
   activeFriendId = null;
   saveState();
   renderFriends();
+  renderSteps();
   elements.friendDialog.close();
   showToast('친구 목록에서 삭제했습니다.');
 }
@@ -711,7 +955,8 @@ async function shareProgress() {
 }
 
 function resetProgress() {
-  if (!confirm('방문 기록, 아이템, 포인트, 친구 목록을 모두 초기화할까요?')) return;
+  if (!confirm('방문 기록, 아이템, 포인트, 친구 목록, 오늘 걸음 수를 모두 초기화할까요?')) return;
+  if (pedometerRunning) stopPedometer();
   state = cloneDefaultState();
   state.profile.id = randomId();
   localStorage.removeItem(STORAGE_KEY);
@@ -738,6 +983,9 @@ $('#codeVerifyButton').addEventListener('click', () => {
   else elements.verifyMessage.textContent = 'QR 코드 값이 일치하지 않습니다.';
 });
 $('#hiddenDrawButton').addEventListener('click', drawHiddenItem);
+$('#pedometerToggleButton').addEventListener('click', togglePedometer);
+$('#demoStepsButton').addEventListener('click', () => addSteps(1000, 'demo'));
+$('#shareStepsButton').addEventListener('click', shareSteps);
 $('#demoAllButton').addEventListener('click', () => {
   LANDMARKS.forEach((landmark) => completeVisit(landmark.id, '데모', { silent: true }));
   showToast('모든 장소를 1회씩 방문하고 랜덤 보상을 받았습니다.');

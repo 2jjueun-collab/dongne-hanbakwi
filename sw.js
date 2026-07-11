@@ -1,7 +1,7 @@
-const CACHE = 'hagom-local-quest-v7-standing-cutout';
+const CACHE = 'hagom-local-quest-v8-pedometer';
 const ASSETS = [
   './', './index.html', './styles.css', './app.js', './data.js',
-  './manifest.webmanifest', './assets/hagom-front-stand-cutout.png',
+  './manifest.webmanifest', './assets/hagom-front-balanced.png',
   './assets/hagom-placeholder.svg', './assets/favicon.svg', './assets/app-icon.svg'
 ];
 
