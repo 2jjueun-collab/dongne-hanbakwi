@@ -1,4 +1,4 @@
-const CACHE = 'hagom-local-quest-v11-stable-icons';
+const CACHE = 'hagom-local-quest-v12-mobile-responsive';
 const CORE = [
   './', './index.html', './styles.css', './app.js', './data.js',
   './manifest.webmanifest', './assets/hagom-front-balanced.png',
