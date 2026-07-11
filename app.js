@@ -25,6 +25,41 @@ const SHOP_CATALOG = SHOP_ITEMS.map((item) => ({ ...item, source: '포인트 상
 const ITEM_CATALOG = [...LANDMARK_ITEMS, ...SHOP_CATALOG, ...HIDDEN_GACHA_ITEMS, FRIENDSHIP_BADGE];
 const ITEM_BY_ID = new Map(ITEM_CATALOG.map((item) => [item.id, item]));
 
+
+function resolveItem(item) {
+  return ITEM_BY_ID.get(item?.id) || item || {};
+}
+
+function itemIconMarkup(item, context = 'card') {
+  const resolved = resolveItem(item);
+  const label = escapeHTML(resolved.name || '아이템');
+  if (resolved.icon) {
+    return `<span class="item-icon item-icon-${escapeHTML(context)}"><img src="${escapeHTML(resolved.icon)}" alt="${label}" loading="eager" /></span>`;
+  }
+  return `<span class="item-icon item-icon-${escapeHTML(context)} item-icon-emoji" aria-label="${label}">${escapeHTML(resolved.emoji || '•')}</span>`;
+}
+
+function itemPlacement(item) {
+  const resolved = resolveItem(item);
+  const fallback = {
+    hat: { x: 50, y: 17, width: 46, rotate: 0, layer: 'front' },
+    hand: { x: 79, y: 66, width: 27, rotate: -6, layer: 'front' },
+    neck: { x: 50, y: 40, width: 42, rotate: 0, layer: 'front' },
+    chest: { x: 55, y: 50, width: 22, rotate: 0, layer: 'front' },
+    back: { x: 27, y: 58, width: 36, rotate: -8, layer: 'behind' }
+  }[resolved.slot] || { x: 50, y: 50, width: 25, rotate: 0, layer: 'front' };
+  return { ...fallback, ...(resolved.placement || {}) };
+}
+
+function reconcileEquippedSlots() {
+  const next = { hat: null, hand: null, neck: null, chest: null, back: null };
+  Object.values(state.equipped || {}).forEach((id) => {
+    const item = ITEM_BY_ID.get(id);
+    if (item && state.inventoryCounts[id] > 0 && !next[item.slot]) next[item.slot] = id;
+  });
+  state.equipped = next;
+}
+
 const DEFAULT_STATE = {
   visitCounts: {},
   inventoryCounts: {},
@@ -41,6 +76,7 @@ const DEFAULT_STATE = {
 };
 
 let state = loadState();
+reconcileEquippedSlots();
 ensureTodaySteps();
 let activeLandmarkId = null;
 let activeFriendId = null;
@@ -275,14 +311,17 @@ function weightedRandom(items) {
 }
 
 function characterMarkup(size = 'normal', equippedItems = getEquippedItems()) {
-  const layers = equippedItems.map((item) =>
-    `<span class="equipped-item slot-${escapeHTML(item.slot)}" aria-label="${escapeHTML(item.name)}">${escapeHTML(item.emoji)}</span>`
-  ).join('');
+  const layers = equippedItems.map((rawItem) => {
+    const item = resolveItem(rawItem);
+    const placement = itemPlacement(item);
+    const style = `--item-x:${placement.x}%;--item-y:${placement.y}%;--item-width:${placement.width}%;--item-rotate:${placement.rotate}deg;`;
+    return `<span class="equipped-item accessory-layer ${placement.layer === 'behind' ? 'is-behind' : 'is-front'} slot-${escapeHTML(item.slot || 'hand')} item-${escapeHTML(item.id || 'unknown')}" style="${style}" aria-label="${escapeHTML(item.name || '아이템')}">${itemIconMarkup(item, 'wear')}</span>`;
+  }).join('');
 
   return `<div class="character ${escapeHTML(size)}" aria-label="아이템을 착용한 ${escapeHTML(CHARACTER.name)} 캐릭터">
     <div class="character-shadow"></div>
-    <img class="hagom-base" src="${escapeHTML(CHARACTER.image)}" alt="${escapeHTML(CHARACTER.name)}" onerror="this.onerror=null;this.src='${escapeHTML(CHARACTER.fallbackImage)}';" />
     ${layers}
+    <img class="hagom-base" src="${escapeHTML(CHARACTER.image)}" alt="${escapeHTML(CHARACTER.name)}" onerror="this.onerror=null;this.src='${escapeHTML(CHARACTER.fallbackImage)}';" />
   </div>`;
 }
 
@@ -368,7 +407,7 @@ function renderInventory() {
     const count = state.inventoryCounts[item.id] || 0;
     return `<button class="inventory-item ${equipped ? 'equipped' : ''}" type="button" data-equip="${item.id}">
       ${count > 1 ? `<i class="count-badge">×${count}</i>` : ''}
-      <span>${escapeHTML(item.emoji)}</span><strong>${escapeHTML(item.name)}</strong><small>${equipped ? '착용 중 · 눌러서 해제' : '눌러서 착용'}</small>
+      ${itemIconMarkup(item, 'inventory')}<strong>${escapeHTML(item.name)}</strong><small>${equipped ? '착용 중 · 눌러서 해제' : '눌러서 착용'}</small>
     </button>`;
   }).join('');
 
@@ -384,7 +423,7 @@ function renderShop() {
     const affordable = balance >= item.price;
     const buttonText = purchased ? '구매 완료' : affordable ? `${item.price}P로 구매` : `${item.price - balance}P 부족`;
     return `<article class="shop-item ${purchased ? 'purchased' : ''}">
-      <div class="shop-item-art">${escapeHTML(item.emoji)}</div>
+      <div class="shop-item-art">${itemIconMarkup(item, 'shop')}</div>
       <div class="shop-item-copy"><span>${slotLabel(item.slot)}</span><h3>${escapeHTML(item.name)}</h3><p>${escapeHTML(item.description)}</p></div>
       <div class="shop-item-footer"><strong>${item.price}P</strong><button class="${purchased ? 'secondary-button' : 'primary-button'} compact" type="button" data-buy="${item.id}" ${purchased || !affordable ? 'disabled' : ''}>${buttonText}</button></div>
     </article>`;
@@ -417,7 +456,7 @@ function renderCollection() {
 
 function collectionCard(item, unlocked) {
   return `<article class="collection-item ${unlocked ? 'unlocked' : 'locked'}">
-    <span class="collection-art">${unlocked ? escapeHTML(item.emoji) : '？'}</span>
+    <span class="collection-art">${unlocked ? itemIconMarkup(item, 'collection') : '？'}</span>
     <div><small>${unlocked ? escapeHTML(item.source || '획득 아이템') : escapeHTML(item.source || '미획득')}</small><strong>${unlocked ? escapeHTML(item.name) : '미획득 아이템'}</strong></div>
   </article>`;
 }
@@ -522,7 +561,7 @@ function renderFriends() {
     const stepLabel = friend.stepDate === localDateKey() ? `오늘 ${steps.toLocaleString('ko-KR')}걸음` : '오늘 기록 업데이트 필요';
     return `<button class="friend-card" type="button" data-friend="${escapeHTML(friend.id)}">
       <div class="friend-preview">${characterMarkup('friend-size', friend.equippedItems)}</div>
-      <div class="friend-card-copy"><small>FRIEND</small><h3>${escapeHTML(friend.name)}</h3><b class="friend-step-chip">👟 ${escapeHTML(stepLabel)}</b><p>${friend.equippedItems.length ? escapeHTML(friend.equippedItems.map((item) => `${item.emoji} ${item.name}`).join(' · ')) : '착용한 아이템이 없습니다.'}</p><strong>기록과 꾸미기 보기 →</strong></div>
+      <div class="friend-card-copy"><small>FRIEND</small><h3>${escapeHTML(friend.name)}</h3><b class="friend-step-chip">👟 ${escapeHTML(stepLabel)}</b><p>${friend.equippedItems.length ? escapeHTML(friend.equippedItems.map((item) => item.name).join(' · ')) : '착용한 아이템이 없습니다.'}</p><strong>기록과 꾸미기 보기 →</strong></div>
     </button>`;
   }).join('');
   elements.friendList.querySelectorAll('[data-friend]').forEach((button) =>
@@ -732,7 +771,7 @@ function completeVisit(id, method = 'GPS', { silent = false } = {}) {
   if (!silent) {
     showReward({
       eyebrow: `${method} · ${state.visitCounts[id]}번째 방문`,
-      art: reward.emoji,
+      item: reward,
       title: reward.name,
       description: `${landmark.name} 랜덤 보상 획득 · ${landmark.points}P 적립${state.inventoryCounts[reward.id] > 1 ? ` · 현재 ${state.inventoryCounts[reward.id]}개 보유` : ''}`
     });
@@ -775,7 +814,11 @@ function requestLocation(onSuccess, onError) {
 function toggleEquip(id) {
   const item = ITEM_BY_ID.get(id);
   if (!item || !(state.inventoryCounts[id] > 0)) return;
-  state.equipped[item.slot] = state.equipped[item.slot] === id ? null : id;
+  const isEquipped = Object.values(state.equipped).includes(id);
+  Object.keys(state.equipped).forEach((slot) => {
+    if (state.equipped[slot] === id) state.equipped[slot] = null;
+  });
+  if (!isEquipped) state.equipped[item.slot] = id;
   saveState();
   renderCharacter();
   renderSteps();
@@ -795,7 +838,7 @@ function buyItem(id) {
   addInventory(id, 1);
   saveState();
   renderAll();
-  showReward({ eyebrow: 'POINT SHOP', art: item.emoji, title: item.name, description: `${item.price}P를 사용해 구매했습니다.` });
+  showReward({ eyebrow: 'POINT SHOP', item, title: item.name, description: `${item.price}P를 사용해 구매했습니다.` });
 }
 
 function drawHiddenItem() {
@@ -810,7 +853,7 @@ function drawHiddenItem() {
   renderAll();
   elements.hiddenDrawMessage.textContent = '히든 아이템을 획득했습니다. 다시 뽑으면 중복 아이템이 나올 수 있습니다.';
   showReward({
-    eyebrow: 'HIDDEN DRAW', art: item.emoji, title: item.name,
+    eyebrow: 'HIDDEN DRAW', item, title: item.name,
     description: `히든 아이템 획득 · ${HIDDEN_DRAW_COST}P 사용${state.inventoryCounts[item.id] > 1 ? ` · 현재 ${state.inventoryCounts[item.id]}개 보유` : ''}`
   });
 }
@@ -888,7 +931,7 @@ function afterFriendChanged() {
   saveState();
   renderAll();
   if (badgeNew) {
-    showReward({ eyebrow: 'HIDDEN ACHIEVEMENT', art: FRIENDSHIP_BADGE.emoji, title: FRIENDSHIP_BADGE.name, description: '숨겨진 조건을 달성해 특별 아이템을 획득했습니다.' });
+    showReward({ eyebrow: 'HIDDEN ACHIEVEMENT', item: FRIENDSHIP_BADGE, title: FRIENDSHIP_BADGE.name, description: '숨겨진 조건을 달성해 특별 아이템을 획득했습니다.' });
   }
 }
 
@@ -902,7 +945,7 @@ function openFriend(id) {
     ? `오늘 ${friendStepsToday(friend).toLocaleString('ko-KR')}걸음`
     : '오늘 걸음 기록 업데이트 필요';
   elements.friendDialogItems.innerHTML = friend.equippedItems.length
-    ? friend.equippedItems.map((item) => `<span>${escapeHTML(item.emoji)} ${escapeHTML(item.name)}</span>`).join('')
+    ? friend.equippedItems.map((item) => `<span class="friend-equipped-chip">${itemIconMarkup(item, 'friend-list')}<b>${escapeHTML(item.name)}</b></span>`).join('')
     : '<span>착용 아이템 없음</span>';
   elements.friendDialog.showModal();
 }
@@ -918,9 +961,9 @@ function removeActiveFriend() {
   showToast('친구 목록에서 삭제했습니다.');
 }
 
-function showReward({ eyebrow, art, title, description }) {
+function showReward({ eyebrow, item = null, art = '🎁', title, description }) {
   elements.resultEyebrow.textContent = eyebrow;
-  elements.resultArt.textContent = art;
+  elements.resultArt.innerHTML = item ? itemIconMarkup(item, 'result') : escapeHTML(art);
   elements.resultTitle.textContent = title;
   elements.resultDescription.textContent = description;
   elements.resultDialog.showModal();
