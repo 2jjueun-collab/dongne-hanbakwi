@@ -757,7 +757,12 @@ elements.profileNameInput.addEventListener('keydown', (event) => {
 window.addEventListener('hashchange', () => navigate(location.hash.slice(1)));
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('./sw.js', { updateViaCache: 'none' })
+      .then((registration) => registration.update())
+      .catch(() => {});
+  });
 }
 
 saveState();
