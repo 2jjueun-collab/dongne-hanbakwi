@@ -1,4 +1,4 @@
-const CACHE = 'hagom-local-quest-v17-item-step-reward';
+const CACHE = 'hagom-local-quest-v18-item-size-balance';
 const CORE = [
   './', './index.html', './styles.css?v=17-item-step-reward', './app.js?v=17-item-step-reward', './data.js',
   './manifest.webmanifest', './assets/hagom-front-balanced.png',
