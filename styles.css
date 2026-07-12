@@ -877,3 +877,8 @@ img, svg, canvas, video { max-width: 100%; }
     height: 128px;
   }
 }
+
+/* v14: 장소별 하루 1회 인증 상태 */
+.landmark-card.today-complete { border-color: #8eaa78; background: #eef5e8; }
+.landmark-meta .today-badge { background: var(--forest); color: #fff; }
+.landmark-card.today-complete [data-verify] { opacity: 1; border-color: #b9c8be; background: #dfe8e2; color: #5f7067; }

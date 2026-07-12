@@ -63,6 +63,7 @@ function reconcileEquippedSlots() {
 
 const DEFAULT_STATE = {
   visitCounts: {},
+  lastVisitDates: {},
   inventoryCounts: {},
   equipped: { hat: null, hand: null, neck: null, chest: null, back: null },
   claimedMissions: [],
@@ -128,11 +129,22 @@ function normalizeCountMap(value) {
     .map(([key, count]) => [key, Math.floor(Number(count))]));
 }
 
+function normalizeDateMap(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key, date]) => typeof key === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(String(date)))
+    .map(([key, date]) => [key, String(date)]));
+}
+
 function localDateKey(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function hasVisitedLandmarkToday(id) {
+  return state.lastVisitDates?.[id] === localDateKey();
 }
 
 function normalizeSteps(value) {
@@ -173,6 +185,7 @@ function loadState() {
       const merged = {
         ...cloneDefaultState(), ...saved,
         visitCounts: normalizeCountMap(saved.visitCounts),
+        lastVisitDates: normalizeDateMap(saved.lastVisitDates),
         inventoryCounts: normalizeCountMap(saved.inventoryCounts),
         equipped: { ...DEFAULT_STATE.equipped, ...(saved.equipped || {}) },
         claimedMissions: Array.isArray(saved.claimedMissions) ? saved.claimedMissions : [],
@@ -368,21 +381,22 @@ function renderLandmarks() {
   const filtered = LANDMARKS.filter((item) => state.selectedCategory === '전체' || item.category === state.selectedCategory);
   elements.landmarkList.innerHTML = filtered.map((item, index) => {
     const count = state.visitCounts[item.id] || 0;
+    const completedToday = hasVisitedLandmarkToday(item.id);
     const distance = landmarkDistance(item);
-    return `<article class="landmark-card ${count ? 'visited' : ''}">
+    return `<article class="landmark-card ${count ? 'visited' : ''} ${completedToday ? 'today-complete' : ''}">
       <div class="landmark-number">${String(index + 1).padStart(2, '0')}</div>
       <div class="landmark-copy">
-        <div class="landmark-meta"><span>${escapeHTML(item.category)}</span>${count ? `<strong>${count}회 방문</strong>` : ''}</div>
+        <div class="landmark-meta"><span>${escapeHTML(item.category)}</span>${count ? `<strong>${count}회 방문</strong>` : ''}${completedToday ? '<strong class="today-badge">오늘 인증 완료</strong>' : ''}</div>
         <h3>${escapeHTML(item.name)}</h3>
         <p>${escapeHTML(item.description)}</p>
         <div class="reward-pool">
           <div class="mystery-stack" aria-hidden="true">${item.rewards.map(() => '<span>?</span>').join('')}</div>
-          <span><small>매 방문 랜덤 보상</small><strong>${item.rewards.length}종 중 1개 · ${item.points}P</strong></span>
+          <span><small>하루 1회 랜덤 보상</small><strong>${item.rewards.length}종 중 1개 · ${item.points}P</strong></span>
         </div>
       </div>
       <div class="landmark-actions">
         <span class="distance-label">${distance === null ? 'GPS 미확인' : formatDistance(distance)}</span>
-        <button class="${count ? 'secondary-button' : 'primary-button'} compact" type="button" data-verify="${item.id}">${count ? '다시 방문' : '방문 인증'}</button>
+        <button class="${count ? 'secondary-button' : 'primary-button'} compact" type="button" data-verify="${item.id}" ${completedToday ? 'disabled aria-disabled="true"' : ''}>${completedToday ? '오늘 완료' : (count ? '재방문 인증' : '방문 인증')}</button>
         <button class="text-button map-button" type="button" data-map="${escapeHTML(item.name)}">지도 검색</button>
       </div>
     </article>`;
@@ -750,10 +764,14 @@ function renderAll() {
 function openVerify(id) {
   const landmark = LANDMARKS.find((item) => item.id === id);
   if (!landmark) return;
+  if (hasVisitedLandmarkToday(id)) {
+    showToast(`${landmark.shortName}은 오늘 이미 인증했습니다. 내일 다시 방문해 주세요.`);
+    return;
+  }
   activeLandmarkId = id;
   const visitNumber = (state.visitCounts[id] || 0) + 1;
   elements.verifyTitle.textContent = `${landmark.name} ${visitNumber}번째 방문`;
-  elements.verifyDescription.textContent = `${landmark.radius}m 이내 GPS 또는 현장 QR 코드로 인증합니다. 반복 방문도 보상과 포인트가 지급됩니다.`;
+  elements.verifyDescription.textContent = `${landmark.radius}m 이내 GPS 또는 현장 QR 코드로 인증합니다. 같은 장소는 하루에 한 번만 보상받을 수 있습니다.`;
   elements.verifyMessage.textContent = '';
   elements.qrCodeInput.value = '';
   elements.verifyDialog.showModal();
@@ -762,8 +780,15 @@ function openVerify(id) {
 function completeVisit(id, method = 'GPS', { silent = false } = {}) {
   const landmark = LANDMARKS.find((item) => item.id === id);
   if (!landmark) return null;
+  if (hasVisitedLandmarkToday(id)) {
+    const message = `${landmark.shortName}은 오늘 이미 인증했습니다. 같은 장소는 하루에 한 번만 보상받을 수 있습니다.`;
+    if (elements.verifyDialog.open) elements.verifyMessage.textContent = message;
+    if (!silent) showToast(message);
+    return null;
+  }
   const reward = randomFrom(landmark.rewards);
   state.visitCounts[id] = (state.visitCounts[id] || 0) + 1;
+  state.lastVisitDates[id] = localDateKey();
   state.pointsEarned += landmark.points;
   addInventory(reward.id, 1);
   saveState();
@@ -774,7 +799,7 @@ function completeVisit(id, method = 'GPS', { silent = false } = {}) {
       eyebrow: `${method} · ${state.visitCounts[id]}번째 방문`,
       item: reward,
       title: reward.name,
-      description: `${landmark.name} 랜덤 보상 획득 · ${landmark.points}P 적립${state.inventoryCounts[reward.id] > 1 ? ` · 현재 ${state.inventoryCounts[reward.id]}개 보유` : ''}`
+      description: `${landmark.name} 랜덤 보상 획득 · ${landmark.points}P 적립${state.inventoryCounts[reward.id] > 1 ? ` · 현재 ${state.inventoryCounts[reward.id]}개 보유` : ''} · 오늘 인증 완료`
     });
   }
   return reward;
@@ -1031,8 +1056,10 @@ $('#pedometerToggleButton').addEventListener('click', togglePedometer);
 $('#demoStepsButton').addEventListener('click', () => addSteps(1000, 'demo'));
 $('#shareStepsButton').addEventListener('click', shareSteps);
 $('#demoAllButton').addEventListener('click', () => {
-  LANDMARKS.forEach((landmark) => completeVisit(landmark.id, '데모', { silent: true }));
-  showToast('모든 장소를 1회씩 방문하고 랜덤 보상을 받았습니다.');
+  const completed = LANDMARKS.reduce((count, landmark) =>
+    count + (completeVisit(landmark.id, '데모', { silent: true }) ? 1 : 0), 0);
+  if (completed > 0) showToast(`오늘 미인증 장소 ${completed}곳을 방문 처리하고 랜덤 보상을 받았습니다.`);
+  else showToast('오늘은 등록된 모든 장소의 인증을 이미 완료했습니다.');
 });
 $('#shareButton').addEventListener('click', shareProgress);
 $('#saveProfileNameButton').addEventListener('click', saveProfileName);
@@ -1047,6 +1074,21 @@ elements.profileNameInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') { event.preventDefault(); saveProfileName(); }
 });
 window.addEventListener('hashchange', () => navigate(location.hash.slice(1)));
+
+let renderedDateKey = localDateKey();
+function refreshForNewDay() {
+  const today = localDateKey();
+  if (today === renderedDateKey) return;
+  renderedDateKey = today;
+  ensureTodaySteps();
+  saveState();
+  renderAll();
+  showToast('날짜가 바뀌어 오늘의 장소 인증과 걸음 기록을 새로 시작합니다.');
+}
+window.addEventListener('focus', refreshForNewDay);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshForNewDay();
+});
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => {

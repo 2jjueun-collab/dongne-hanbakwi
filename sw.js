@@ -1,6 +1,6 @@
-const CACHE = 'hagom-local-quest-v13-friend-card-fix';
+const CACHE = 'hagom-local-quest-v14-daily-visit-limit';
 const CORE = [
-  './', './index.html', './styles.css?v=13-friend-card-fix', './app.js', './data.js',
+  './', './index.html', './styles.css?v=14-daily-visit-limit', './app.js', './data.js',
   './manifest.webmanifest', './assets/hagom-front-balanced.png',
   './assets/hagom-placeholder.svg', './assets/favicon.svg', './assets/app-icon.svg'
 ];
