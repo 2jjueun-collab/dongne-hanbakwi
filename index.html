@@ -7,7 +7,7 @@
   <meta name="description" content="경산 랜드마크 탐험, 하곰 꾸미기, 만보기와 친구 걸음 순위를 제공하는 웹앱 MVP" />
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="stylesheet" href="./styles.css?v=16-step-points-gacha" />
+  <link rel="stylesheet" href="./styles.css?v=17-item-step-reward" />
   <title>동네 한 바퀴 · 하곰 탐험</title>
 </head>
 <body>
@@ -87,6 +87,7 @@
             </div>
             <div class="step-goal-row"><span>오늘 목표</span><strong><span id="stepGoalText">0</span> / 10,000</strong></div>
             <div class="step-progress-track" aria-hidden="true"><span id="stepProgressBar"></span></div>
+            <p class="step-reward-note">1,000걸음마다 10~100P 랜덤 지급 · 높은 포인트일수록 낮은 확률</p>
             <p class="step-status" id="stepStatus">시작 버튼을 누르고 휴대전화를 들고 걸어 주세요.</p>
             <div class="step-actions">
               <button class="primary-button" id="pedometerToggleButton" type="button">만보기 시작</button>
@@ -122,7 +123,7 @@
             <h3>히든 아이템 뽑기</h3>
             <p>아이템의 이름과 모습은 획득 전까지 공개되지 않습니다. 걸음·탐험·미션으로 얻은 포인트를 모두 사용할 수 있습니다.</p>
           </div>
-          <button class="primary-button" id="hiddenDrawButton" type="button"><span id="hiddenDrawCost">250</span>P로 뽑기</button>
+          <button class="primary-button" id="hiddenDrawButton" type="button"><span id="hiddenDrawCost">200</span>P로 뽑기</button>
           <p class="gacha-note" id="hiddenDrawMessage" aria-live="polite">총 14종 중 무작위로 등장합니다. 걸음 보상 포인트도 사용 가능하며, 상세 모습은 획득 전 비공개이고 중복될 수 있습니다.</p>
         </article>
       </section>
@@ -221,6 +222,6 @@
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.js?v=16-step-points-gacha"></script>
+  <script type="module" src="./app.js?v=17-item-step-reward"></script>
 </body>
 </html>

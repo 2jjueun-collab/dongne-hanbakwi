@@ -1,6 +1,6 @@
-const CACHE = 'hagom-local-quest-v16-step-points-gacha';
+const CACHE = 'hagom-local-quest-v17-item-step-reward';
 const CORE = [
-  './', './index.html', './styles.css?v=16-step-points-gacha', './app.js?v=16-step-points-gacha', './data.js',
+  './', './index.html', './styles.css?v=17-item-step-reward', './app.js?v=17-item-step-reward', './data.js',
   './manifest.webmanifest', './assets/hagom-front-balanced.png',
   './assets/hagom-placeholder.svg', './assets/favicon.svg', './assets/app-icon.svg'
 ];

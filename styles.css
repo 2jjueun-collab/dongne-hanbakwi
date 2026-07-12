@@ -980,3 +980,28 @@ img, svg, canvas, video { max-width: 100%; }
     font-size: 13px;
   }
 }
+
+
+/* v17: 히든 아이템 가시성 및 랜덤 걸음 보상 안내 */
+.step-reward-note {
+  max-width: 540px;
+  margin: 12px 0 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(255,255,255,.36);
+  border-radius: 12px;
+  background: rgba(255,255,255,.14);
+  color: rgba(255,255,255,.96);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+.character .item-hidden-cloud-cape,
+.character .item-hidden-rainbow-wings {
+  filter: drop-shadow(0 5px 4px rgba(255,255,255,.75)) drop-shadow(0 5px 6px rgba(26,48,39,.2));
+}
+@media (max-width: 620px) {
+  .step-reward-note { max-width: 68%; font-size: 11px; }
+}
+@media (max-width: 430px) {
+  .step-reward-note { max-width: none; }
+}

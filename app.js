@@ -18,7 +18,18 @@ const STEP_GOAL = 10000;
 const STEP_STRIDE_METERS = 0.68;
 const STEP_CALORIES = 0.04;
 const STEP_REWARD_INTERVAL = 1000;
-const STEP_REWARD_POINTS = 10;
+const STEP_REWARD_TABLE = [
+  { points: 10, weight: 66 },  // 33%
+  { points: 20, weight: 44 },  // 22%
+  { points: 30, weight: 30 },  // 15%
+  { points: 40, weight: 20 },  // 10%
+  { points: 50, weight: 14 },  // 7%
+  { points: 60, weight: 10 },  // 5%
+  { points: 70, weight: 7 },   // 3.5%
+  { points: 80, weight: 5 },   // 2.5%
+  { points: 90, weight: 3 },   // 1.5%
+  { points: 100, weight: 1 }   // 0.5%
+];
 
 const LANDMARK_ITEMS = LANDMARKS.flatMap((landmark) => landmark.rewards.map((item) => ({ ...item, source: landmark.shortName, unlockType: 'visit' })));
 const SHOP_CATALOG = SHOP_ITEMS.map((item) => ({ ...item, source: '포인트 상점', unlockType: 'shop' }));
@@ -73,7 +84,7 @@ const DEFAULT_STATE = {
   selectedCategory: '전체',
   currentLocation: null,
   friends: [],
-  steps: { date: '', count: 0, rewardedMilestones: 0 },
+  steps: { date: '', count: 0, rewardedMilestones: 0, rewardedPoints: 0 },
   profile: { id: '', name: '하곰' }
 };
 
@@ -148,10 +159,14 @@ function hasVisitedLandmarkToday(id) {
 }
 
 function normalizeSteps(value) {
+  const rewardedMilestones = Math.max(0, Math.floor(Number(value?.rewardedMilestones) || 0));
+  const savedRewardPoints = Number(value?.rewardedPoints);
   return {
     date: typeof value?.date === 'string' ? value.date : '',
     count: Math.max(0, Math.floor(Number(value?.count) || 0)),
-    rewardedMilestones: Math.max(0, Math.floor(Number(value?.rewardedMilestones) || 0))
+    rewardedMilestones,
+    // v16 이전 기록은 기존 1회당 10P 기준으로 안전하게 이어받습니다.
+    rewardedPoints: Math.max(0, Math.floor(Number.isFinite(savedRewardPoints) ? savedRewardPoints : rewardedMilestones * 10))
   };
 }
 
@@ -159,8 +174,10 @@ function ensureTodaySteps() {
   const today = localDateKey();
   state.steps = normalizeSteps(state.steps);
   if (state.steps.date !== today) {
-    state.steps = { date: today, count: 0, rewardedMilestones: 0 };
+    state.steps = { date: today, count: 0, rewardedMilestones: 0, rewardedPoints: 0 };
+    return true;
   }
+  return false;
 }
 
 function todayStepCount() {
@@ -615,7 +632,7 @@ function renderSteps() {
   const count = state.steps.count;
   const distanceKm = count * STEP_STRIDE_METERS / 1000;
   const calories = count * STEP_CALORIES;
-  const earned = state.steps.rewardedMilestones * STEP_REWARD_POINTS;
+  const earned = state.steps.rewardedPoints;
   const progress = Math.min(100, count / STEP_GOAL * 100);
 
   elements.todayStepCount.textContent = count.toLocaleString('ko-KR');
@@ -657,9 +674,15 @@ function addSteps(amount, source = 'manual') {
   const newMilestones = Math.max(0, currentMilestones - Math.max(previousMilestones, state.steps.rewardedMilestones));
 
   if (newMilestones > 0) {
+    const rewards = Array.from({ length: newMilestones }, () => weightedRandom(STEP_REWARD_TABLE).points);
+    const rewardTotal = rewards.reduce((sum, points) => sum + points, 0);
     state.steps.rewardedMilestones = currentMilestones;
-    state.pointsEarned += newMilestones * STEP_REWARD_POINTS;
-    showToast(`${(newMilestones * STEP_REWARD_POINTS).toLocaleString('ko-KR')}P를 걸음 보상으로 적립했습니다. 상점과 히든 뽑기에 사용할 수 있습니다.`);
+    state.steps.rewardedPoints += rewardTotal;
+    state.pointsEarned += rewardTotal;
+    const rewardDetail = rewards.length === 1
+      ? `${rewards[0]}P`
+      : `${rewards.map((points) => `${points}P`).join(' + ')} = ${rewardTotal}P`;
+    showToast(`걸음 보상 ${rewardDetail}를 적립했습니다. 높은 포인트일수록 등장 확률이 낮습니다.`);
   }
 
   saveState();
@@ -1093,6 +1116,8 @@ window.addEventListener('focus', refreshForNewDay);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refreshForNewDay();
 });
+// 앱을 켜 둔 채 자정을 넘겨도 1분 안에 오늘 걸음 수가 초기화됩니다.
+window.setInterval(refreshForNewDay, 60_000);
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => {
