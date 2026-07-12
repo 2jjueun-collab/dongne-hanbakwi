@@ -1,6 +1,6 @@
-const CACHE = 'hagom-local-quest-v12-mobile-responsive';
+const CACHE = 'hagom-local-quest-v13-friend-card-fix';
 const CORE = [
-  './', './index.html', './styles.css', './app.js', './data.js',
+  './', './index.html', './styles.css?v=13-friend-card-fix', './app.js', './data.js',
   './manifest.webmanifest', './assets/hagom-front-balanced.png',
   './assets/hagom-placeholder.svg', './assets/favicon.svg', './assets/app-icon.svg'
 ];
