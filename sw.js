@@ -1,6 +1,6 @@
-const CACHE = 'hagom-local-quest-v15-hidden-friend-icons';
+const CACHE = 'hagom-local-quest-v16-step-points-gacha';
 const CORE = [
-  './', './index.html', './styles.css?v=15-hidden-friend-icons', './app.js', './data.js',
+  './', './index.html', './styles.css?v=16-step-points-gacha', './app.js?v=16-step-points-gacha', './data.js',
   './manifest.webmanifest', './assets/hagom-front-balanced.png',
   './assets/hagom-placeholder.svg', './assets/favicon.svg', './assets/app-icon.svg'
 ];

@@ -659,12 +659,16 @@ function addSteps(amount, source = 'manual') {
   if (newMilestones > 0) {
     state.steps.rewardedMilestones = currentMilestones;
     state.pointsEarned += newMilestones * STEP_REWARD_POINTS;
-    showToast(`${(newMilestones * STEP_REWARD_POINTS).toLocaleString('ko-KR')}P를 걸음 보상으로 적립했습니다.`);
+    showToast(`${(newMilestones * STEP_REWARD_POINTS).toLocaleString('ko-KR')}P를 걸음 보상으로 적립했습니다. 상점과 히든 뽑기에 사용할 수 있습니다.`);
   }
 
   saveState();
   renderSteps();
   renderStats();
+  // 걸음 보상으로 잔액이 바뀌면 상점·히든 뽑기 버튼 상태도 즉시 갱신한다.
+  // 이전에는 포인트 숫자만 갱신되어, 충분한 포인트를 모아도 뽑기 버튼이
+  // 새로고침 전까지 비활성화된 상태로 남을 수 있었다.
+  renderShop();
   renderFriendCode();
 
   if (source === 'sensor') {
@@ -856,7 +860,7 @@ function buyItem(id) {
   const item = SHOP_ITEMS.find((candidate) => candidate.id === id);
   if (!item || state.purchasedItems.includes(id)) return;
   if (availablePoints() < item.price) {
-    showToast('포인트가 부족합니다. 탐험이나 미션을 완료해 주세요.');
+    showToast('포인트가 부족합니다. 걸음·탐험·미션으로 포인트를 모아 주세요.');
     return;
   }
   state.purchasedItems.push(id);
@@ -869,7 +873,7 @@ function buyItem(id) {
 
 function drawHiddenItem() {
   if (availablePoints() < HIDDEN_DRAW_COST) {
-    showToast('히든 뽑기에 필요한 포인트가 부족합니다.');
+    showToast('히든 뽑기에 필요한 포인트가 부족합니다. 걸음·탐험·미션으로 모은 포인트를 모두 사용할 수 있습니다.');
     return;
   }
   const item = weightedRandom(HIDDEN_GACHA_ITEMS);
