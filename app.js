@@ -971,7 +971,7 @@ function openFriend(id) {
     ? `오늘 ${friendStepsToday(friend).toLocaleString('ko-KR')}걸음`
     : '오늘 걸음 기록 업데이트 필요';
   elements.friendDialogItems.innerHTML = friend.equippedItems.length
-    ? friend.equippedItems.map((item) => `<span class="friend-equipped-chip">${itemIconMarkup(item, 'friend-list')}<b>${escapeHTML(item.name)}</b></span>`).join('')
+    ? friend.equippedItems.map((item) => { const resolved = resolveItem(item); return `<span class="friend-equipped-chip">${itemIconMarkup(resolved, 'friend-list')}<span class="friend-equipped-copy"><b>${escapeHTML(resolved.name || item.name)}</b><small>${escapeHTML(slotLabel(resolved.slot))} 아이템</small></span></span>`; }).join('')
     : '<span>착용 아이템 없음</span>';
   elements.friendDialog.showModal();
 }
@@ -1033,7 +1033,7 @@ function resetProgress() {
   elements.locationText.textContent = 'GPS 인증은 HTTPS 환경에서 작동합니다.';
   elements.locateButton.textContent = '내 위치 확인';
   elements.friendMessage.textContent = '';
-  elements.hiddenDrawMessage.textContent = '결과는 무작위입니다. 이미 얻은 아이템이 다시 나올 수 있습니다.';
+  elements.hiddenDrawMessage.textContent = `총 ${HIDDEN_GACHA_ITEMS.length}종 중 무작위로 등장합니다. 상세 모습은 획득 전 비공개이며 중복될 수 있습니다.`;
   saveState();
   renderAll();
   navigate('explore');

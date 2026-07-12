@@ -882,3 +882,101 @@ img, svg, canvas, video { max-width: 100%; }
 .landmark-card.today-complete { border-color: #8eaa78; background: #eef5e8; }
 .landmark-meta .today-badge { background: var(--forest); color: #fff; }
 .landmark-card.today-complete [data-verify] { opacity: 1; border-color: #b9c8be; background: #dfe8e2; color: #5f7067; }
+
+
+/* Hagom v15 — larger friend equipment artwork on desktop and mobile */
+.friend-equipped-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  margin: 12px 0 20px;
+}
+.friend-equipped-list .friend-equipped-chip {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 82px;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 19px;
+  background: #f2f6f1;
+  color: var(--forest);
+  text-align: left;
+}
+.friend-equipped-list .item-icon-friend-list {
+  width: 58px;
+  height: 58px;
+  padding: 6px;
+  border: 1px solid #d9e2dc;
+  border-radius: 15px;
+  background: #fffdf8;
+  box-shadow: 0 5px 13px rgba(23, 63, 49, .08);
+}
+.friend-equipped-list .item-icon-friend-list.has-fallback::after {
+  font-size: 34px;
+}
+.friend-equipped-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.friend-equipped-list .friend-equipped-chip b {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.3;
+}
+.friend-equipped-list .friend-equipped-chip small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .friend-equipped-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+  .friend-equipped-list .friend-equipped-chip {
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 8px;
+    min-height: 68px;
+    padding: 8px 9px;
+    border-radius: 16px;
+  }
+  .friend-equipped-list .item-icon-friend-list {
+    width: 46px;
+    height: 46px;
+    padding: 4px;
+    border-radius: 12px;
+  }
+  .friend-equipped-list .item-icon-friend-list.has-fallback::after {
+    font-size: 28px;
+  }
+  .friend-equipped-list .friend-equipped-chip b {
+    font-size: 12px;
+    line-height: 1.25;
+  }
+  .friend-equipped-list .friend-equipped-chip small {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 370px) {
+  .friend-equipped-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .friend-equipped-list .friend-equipped-chip {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+  .friend-equipped-list .item-icon-friend-list {
+    width: 52px;
+    height: 52px;
+  }
+  .friend-equipped-list .friend-equipped-chip b {
+    font-size: 13px;
+  }
+}
