@@ -1,6 +1,6 @@
-const CACHE = 'hagom-local-quest-v19-moon-bag-visible';
+const CACHE = 'hagom-local-quest-v20-campus-gps';
 const CORE = [
-  './', './index.html', './styles.css?v=17-item-step-reward', './app.js?v=17-item-step-reward', './data.js',
+  './', './index.html', './styles.css?v=20-campus-gps', './app.js?v=20-campus-gps', './data.js',
   './manifest.webmanifest', './assets/hagom-front-balanced.png',
   './assets/hagom-placeholder.svg', './assets/favicon.svg', './assets/app-icon.svg'
 ];

@@ -389,9 +389,46 @@ function renderFilters() {
   });
 }
 
+function getLandmarkVerificationResult(item, location = state.currentLocation) {
+  if (!item || !location) return null;
+
+  const points = Array.isArray(item.verificationPoints) && item.verificationPoints.length
+    ? item.verificationPoints
+    : [{ name: item.shortName || item.name, lat: item.lat, lng: item.lng, radius: item.radius }];
+
+  const candidates = points
+    .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
+    .map((point) => {
+      const distance = distanceMeters(location.lat, location.lng, point.lat, point.lng);
+      const baseRadius = Number.isFinite(point.radius) ? point.radius : item.radius;
+      const gpsAllowance = Math.min(Math.max(location.accuracy || 0, 0), 160);
+      return {
+        point,
+        distance,
+        allowed: baseRadius + gpsAllowance,
+        inside: distance <= baseRadius + gpsAllowance
+      };
+    })
+    .sort((a, b) => a.distance - b.distance);
+
+  const nearest = candidates[0] || null;
+  const centerDistance = distanceMeters(location.lat, location.lng, item.lat, item.lng);
+  const campusGpsAllowance = Math.min(Math.max(location.accuracy || 0, 0), 160);
+  const insideCampusWideRadius = Number.isFinite(item.campusWideRadius)
+    ? centerDistance <= item.campusWideRadius + campusGpsAllowance
+    : false;
+
+  return {
+    nearest,
+    centerDistance,
+    inside: Boolean(nearest?.inside || insideCampusWideRadius),
+    matchedBy: nearest?.inside ? 'verification-point' : (insideCampusWideRadius ? 'campus-wide-radius' : null)
+  };
+}
+
 function landmarkDistance(item) {
-  if (!state.currentLocation) return null;
-  return distanceMeters(state.currentLocation.lat, state.currentLocation.lng, item.lat, item.lng);
+  const result = getLandmarkVerificationResult(item);
+  return result?.nearest?.distance ?? result?.centerDistance ?? null;
 }
 
 function renderLandmarks() {
@@ -798,7 +835,10 @@ function openVerify(id) {
   activeLandmarkId = id;
   const visitNumber = (state.visitCounts[id] || 0) + 1;
   elements.verifyTitle.textContent = `${landmark.name} ${visitNumber}번째 방문`;
-  elements.verifyDescription.textContent = `${landmark.radius}m 이내 GPS 또는 현장 QR 코드로 인증합니다. 같은 장소는 하루에 한 번만 보상받을 수 있습니다.`;
+  const gpsGuide = Array.isArray(landmark.verificationPoints) && landmark.verificationPoints.length
+    ? '캠퍼스 내 여러 인증 지점 중 가장 가까운 위치를 기준으로 GPS 인증합니다.'
+    : `${landmark.radius}m 이내 GPS 또는 현장 QR 코드로 인증합니다.`;
+  elements.verifyDescription.textContent = `${gpsGuide} 같은 장소는 하루에 한 번만 보상받을 수 있습니다.`;
   elements.verifyMessage.textContent = '';
   elements.qrCodeInput.value = '';
   elements.verifyDialog.showModal();
@@ -836,17 +876,24 @@ function verifyActiveByGps() {
   const landmark = LANDMARKS.find((item) => item.id === activeLandmarkId);
   if (!landmark) return;
   elements.verifyMessage.textContent = '위치를 확인하는 중입니다…';
-  requestLocation(({ lat, lng, accuracy }) => {
-    const points = landmark.checkpoints ?? [{lat: landmark.lat, lng: landmark.lng}];
-    const allowed = landmark.radius + Math.min(accuracy || 0, 50);
-    let nearest = Infinity;
-    const ok = points.some(point=>{
-      const d=distanceMeters(lat,lng,point.lat,point.lng);
-      if(d<nearest) nearest=d;
-      return d<=allowed;
-    });
-    if (ok) completeVisit(landmark.id,'GPS');
-    else elements.verifyMessage.textContent = `현재 약 ${formatDistance(nearest)} 떨어져 있습니다.`;
+  requestLocation((location) => {
+    const result = getLandmarkVerificationResult(landmark, location);
+    if (!result) {
+      elements.verifyMessage.textContent = '인증 위치 정보를 계산할 수 없습니다.';
+      return;
+    }
+
+    if (result.inside) {
+      completeVisit(landmark.id, 'GPS');
+      return;
+    }
+
+    const nearestName = result.nearest?.point?.name || landmark.shortName || landmark.name;
+    const nearestDistance = result.nearest?.distance ?? result.centerDistance;
+    const radiusText = Array.isArray(landmark.verificationPoints) && landmark.verificationPoints.length
+      ? `가장 가까운 인증 지점(${nearestName})`
+      : `현장 반경 ${landmark.radius}m`;
+    elements.verifyMessage.textContent = `현재 ${radiusText}에서 약 ${formatDistance(nearestDistance)} 떨어져 있습니다. 위치 정확도가 좋아진 뒤 다시 시도해 주세요.`;
   }, (message) => { elements.verifyMessage.textContent = message; });
 }
 

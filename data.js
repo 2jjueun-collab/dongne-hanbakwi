@@ -13,8 +13,20 @@ export const LANDMARKS = [
     id: 'yu', name: '영남대학교', shortName: '영남대', category: '캠퍼스',
     description: '대학도시 경산을 상징하는 캠퍼스 탐험지',
     story: '캠퍼스를 걸으며 경산의 청년 문화를 발견해 보세요.',
-    lat: 35.8359, lng: 128.7530,
-    checkpoints:[{lat:35.8359,lng:128.7530},{lat:35.8338,lng:128.7608},{lat:35.8314,lng:128.7654},{lat:35.8298,lng:128.7680},{lat:35.8326,lng:128.7578}], radius:150, qrCode: 'YU2026', points: 100,
+    lat: 35.8359, lng: 128.7530, radius: 500,
+    // 영남대학교는 캠퍼스가 넓어 중심 좌표 하나만으로 인증하지 않습니다.
+    // 아래 지점 중 가장 가까운 곳을 기준으로 계산하고, 캠퍼스 전체 보정 반경도 함께 적용합니다.
+    verificationPoints: [
+      { name: '정문·서편', lat: 35.8359, lng: 128.7530, radius: 330 },
+      { name: '중앙 캠퍼스', lat: 35.8346, lng: 128.7587, radius: 360 },
+      { name: '학생회관·도서관 권역', lat: 35.8329, lng: 128.7618, radius: 360 },
+      { name: '공학·기계관 권역', lat: 35.8317, lng: 128.7653, radius: 420 },
+      { name: '후문·동편', lat: 35.8297, lng: 128.7680, radius: 380 },
+      { name: '북동 캠퍼스', lat: 35.8372, lng: 128.7632, radius: 360 },
+      { name: '기숙사·북편', lat: 35.8390, lng: 128.7577, radius: 360 }
+    ],
+    campusWideRadius: 1150,
+    qrCode: 'YU2026', points: 100,
     rewards: [
       { id: 'yu-cap', name: '영대 학사모', emoji: '🎓', slot: 'hat' , icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNOCAzNiA1MCAxN2w0MiAxOS00MiAxOUw4IDM2WiIgZmlsbD0iIzE3M2YzNSIgc3Ryb2tlPSIjMWYyOTI1IiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMjUgNDZ2MjJjMTIgMTAgMzggMTAgNTAgMFY0NiIgZmlsbD0iIzI5NWI0YSIgc3Ryb2tlPSIjMWYyOTI1IiBzdHJva2Utd2lkdGg9IjQiLz48cGF0aCBkPSJNODQgMzl2MjkiIHN0cm9rZT0iI2Q2YWEzNiIgc3Ryb2tlLXdpZHRoPSI1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSI4NCIgY3k9IjczIiByPSI2IiBmaWxsPSIjZjJjOTVmIi8+PC9zdmc+', placement: { x: 50, y: 14, width: 45, rotate: 0, layer: 'front' } },
       { id: 'yu-jacket', name: '캠퍼스 점퍼', emoji: '🧥', slot: 'chest' , icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNMjggMTcgMTIgMzNsMTAgMTYgMTAtOHY0MmgzNlY0MWwxMCA4IDEwLTE2LTE2LTE2LTE0IDhINDJsLTE0LThaIiBmaWxsPSIjMmQ1ZjRlIiBzdHJva2U9IiMyNjMyMmQiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik00MiAyNSA1MCAzN2w4LTEyTTUwIDM3djQ2IiBmaWxsPSJub25lIiBzdHJva2U9IiNmN2YwZGYiIHN0cm9rZS13aWR0aD0iNCIvPjxwYXRoIGQ9Ik0zMSA1NmgxM001NiA1NmgxMyIgc3Ryb2tlPSIjZDNlNmI4IiBzdHJva2Utd2lkdGg9IjQiLz48dGV4dCB4PSI1MCIgeT0iNzMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMjAiIGZvbnQtd2VpZ2h0PSI5MDAiIGZpbGw9IiNlZmZmOTEiPllVPC90ZXh0Pjwvc3ZnPg==', placement: { x: 50, y: 58, width: 64, rotate: 0, layer: 'front' } },
