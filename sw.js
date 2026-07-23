@@ -1,4 +1,4 @@
-const CACHE = 'hagom-local-quest-v21-campus-polygon';
+const CACHE = 'hagom-local-quest-v22-south-boundary';
 const CORE = [
   './', './index.html', './styles.css?v=21-campus-polygon', './app.js?v=21-campus-polygon', './data.js',
   './manifest.webmanifest', './assets/hagom-front-balanced.png',

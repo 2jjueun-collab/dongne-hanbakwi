@@ -22,13 +22,15 @@ export const LANDMARKS = [
       { lat: 35.8403, lng: 128.7656 }, // 북동 경계
       { lat: 35.8366, lng: 128.7696 }, // 동쪽 상단
       { lat: 35.8316, lng: 128.7710 }, // 자동차·공학관 동편
-      { lat: 35.8278, lng: 128.7688 }, // 후문 남동 경계
-      { lat: 35.8275, lng: 128.7630 }, // 남쪽 경계
+      { lat: 35.8260, lng: 128.7650 }, // 자동차관 뒤편 남동 연결부
+      { lat: 35.8232, lng: 128.7582 }, // 한국섬유기계융합연구원 바깥 경계
+      { lat: 35.8237, lng: 128.7546 }, // 경북TP 제2시험생산공장 바깥 경계
+      { lat: 35.8272, lng: 128.7524 }, // 남서 연결부
       { lat: 35.8305, lng: 128.7560 }, // 남서 경계
       { lat: 35.8348, lng: 128.7510 }, // 정문 서편
       { lat: 35.8390, lng: 128.7508 }  // 북서 연결부
     ],
-    polygonEdgeAllowance: 90,
+    polygonEdgeAllowance: 100,
     qrCode: 'YU2026', points: 100,
     rewards: [
       { id: 'yu-cap', name: '영대 학사모', emoji: '🎓', slot: 'hat' , icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNOCAzNiA1MCAxN2w0MiAxOS00MiAxOUw4IDM2WiIgZmlsbD0iIzE3M2YzNSIgc3Ryb2tlPSIjMWYyOTI1IiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMjUgNDZ2MjJjMTIgMTAgMzggMTAgNTAgMFY0NiIgZmlsbD0iIzI5NWI0YSIgc3Ryb2tlPSIjMWYyOTI1IiBzdHJva2Utd2lkdGg9IjQiLz48cGF0aCBkPSJNODQgMzl2MjkiIHN0cm9rZT0iI2Q2YWEzNiIgc3Ryb2tlLXdpZHRoPSI1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSI4NCIgY3k9IjczIiByPSI2IiBmaWxsPSIjZjJjOTVmIi8+PC9zdmc+', placement: { x: 50, y: 14, width: 45, rotate: 0, layer: 'front' } },
