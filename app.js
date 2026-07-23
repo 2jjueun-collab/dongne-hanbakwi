@@ -315,6 +315,54 @@ function distanceMeters(aLat, aLng, bLat, bLng) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+
+function pointInPolygon(lat, lng, polygon) {
+  if (!Array.isArray(polygon) || polygon.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].lng;
+    const yi = polygon[i].lat;
+    const xj = polygon[j].lng;
+    const yj = polygon[j].lat;
+    const intersects = ((yi > lat) !== (yj > lat))
+      && (lng < ((xj - xi) * (lat - yi)) / ((yj - yi) || Number.EPSILON) + xi);
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+function distanceToSegmentMeters(lat, lng, start, end) {
+  const earthRadius = 6371e3;
+  const toRad = (value) => value * Math.PI / 180;
+  const referenceLat = toRad(lat);
+  const project = (point) => ({
+    x: earthRadius * toRad(point.lng - lng) * Math.cos(referenceLat),
+    y: earthRadius * toRad(point.lat - lat)
+  });
+  const a = project(start);
+  const b = project(end);
+  const abX = b.x - a.x;
+  const abY = b.y - a.y;
+  const lengthSquared = abX * abX + abY * abY;
+  const t = lengthSquared === 0
+    ? 0
+    : Math.max(0, Math.min(1, -(a.x * abX + a.y * abY) / lengthSquared));
+  const closestX = a.x + t * abX;
+  const closestY = a.y + t * abY;
+  return Math.hypot(closestX, closestY);
+}
+
+function distanceToPolygonEdgeMeters(lat, lng, polygon) {
+  if (!Array.isArray(polygon) || polygon.length < 2) return Infinity;
+  let nearest = Infinity;
+  for (let i = 0; i < polygon.length; i += 1) {
+    const start = polygon[i];
+    const end = polygon[(i + 1) % polygon.length];
+    nearest = Math.min(nearest, distanceToSegmentMeters(lat, lng, start, end));
+  }
+  return nearest;
+}
+
 function formatDistance(meters) {
   if (!Number.isFinite(meters)) return '거리 확인 필요';
   return meters < 1000 ? `${Math.round(meters)}m` : `${(meters / 1000).toFixed(1)}km`;
@@ -392,43 +440,35 @@ function renderFilters() {
 function getLandmarkVerificationResult(item, location = state.currentLocation) {
   if (!item || !location) return null;
 
-  const points = Array.isArray(item.verificationPoints) && item.verificationPoints.length
-    ? item.verificationPoints
-    : [{ name: item.shortName || item.name, lat: item.lat, lng: item.lng, radius: item.radius }];
+  const polygon = Array.isArray(item.verificationPolygon) ? item.verificationPolygon : null;
+  if (polygon && polygon.length >= 3) {
+    const insidePolygon = pointInPolygon(location.lat, location.lng, polygon);
+    const edgeDistance = distanceToPolygonEdgeMeters(location.lat, location.lng, polygon);
+    const gpsAccuracy = Math.min(Math.max(location.accuracy || 0, 0), 120);
+    const configuredAllowance = Number.isFinite(item.polygonEdgeAllowance) ? item.polygonEdgeAllowance : 60;
+    const edgeAllowance = Math.max(configuredAllowance, gpsAccuracy);
+    return {
+      inside: insidePolygon || edgeDistance <= edgeAllowance,
+      matchedBy: insidePolygon ? 'polygon' : (edgeDistance <= edgeAllowance ? 'polygon-edge' : null),
+      edgeDistance,
+      centerDistance: distanceMeters(location.lat, location.lng, item.lat, item.lng)
+    };
+  }
 
-  const candidates = points
-    .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
-    .map((point) => {
-      const distance = distanceMeters(location.lat, location.lng, point.lat, point.lng);
-      const baseRadius = Number.isFinite(point.radius) ? point.radius : item.radius;
-      const gpsAllowance = Math.min(Math.max(location.accuracy || 0, 0), 160);
-      return {
-        point,
-        distance,
-        allowed: baseRadius + gpsAllowance,
-        inside: distance <= baseRadius + gpsAllowance
-      };
-    })
-    .sort((a, b) => a.distance - b.distance);
-
-  const nearest = candidates[0] || null;
-  const centerDistance = distanceMeters(location.lat, location.lng, item.lat, item.lng);
-  const campusGpsAllowance = Math.min(Math.max(location.accuracy || 0, 0), 160);
-  const insideCampusWideRadius = Number.isFinite(item.campusWideRadius)
-    ? centerDistance <= item.campusWideRadius + campusGpsAllowance
-    : false;
-
+  const distance = distanceMeters(location.lat, location.lng, item.lat, item.lng);
+  const gpsAllowance = Math.min(Math.max(location.accuracy || 0, 0), 160);
+  const allowed = item.radius + gpsAllowance;
   return {
-    nearest,
-    centerDistance,
-    inside: Boolean(nearest?.inside || insideCampusWideRadius),
-    matchedBy: nearest?.inside ? 'verification-point' : (insideCampusWideRadius ? 'campus-wide-radius' : null)
+    inside: distance <= allowed,
+    matchedBy: distance <= allowed ? 'radius' : null,
+    nearest: { point: item, distance, allowed, inside: distance <= allowed },
+    centerDistance: distance
   };
 }
 
 function landmarkDistance(item) {
   const result = getLandmarkVerificationResult(item);
-  return result?.nearest?.distance ?? result?.centerDistance ?? null;
+  return result?.edgeDistance ?? result?.nearest?.distance ?? result?.centerDistance ?? null;
 }
 
 function renderLandmarks() {
@@ -835,8 +875,8 @@ function openVerify(id) {
   activeLandmarkId = id;
   const visitNumber = (state.visitCounts[id] || 0) + 1;
   elements.verifyTitle.textContent = `${landmark.name} ${visitNumber}번째 방문`;
-  const gpsGuide = Array.isArray(landmark.verificationPoints) && landmark.verificationPoints.length
-    ? '캠퍼스 내 여러 인증 지점 중 가장 가까운 위치를 기준으로 GPS 인증합니다.'
+  const gpsGuide = Array.isArray(landmark.verificationPolygon) && landmark.verificationPolygon.length >= 3
+    ? '캠퍼스 경계 안쪽인지 확인하는 GPS 폴리곤 방식으로 인증합니다.'
     : `${landmark.radius}m 이내 GPS 또는 현장 QR 코드로 인증합니다.`;
   elements.verifyDescription.textContent = `${gpsGuide} 같은 장소는 하루에 한 번만 보상받을 수 있습니다.`;
   elements.verifyMessage.textContent = '';
@@ -888,12 +928,13 @@ function verifyActiveByGps() {
       return;
     }
 
-    const nearestName = result.nearest?.point?.name || landmark.shortName || landmark.name;
+    if (Number.isFinite(result.edgeDistance)) {
+      elements.verifyMessage.textContent = `현재 영남대학교 인증 경계 밖이며, 가장 가까운 캠퍼스 경계에서 약 ${formatDistance(result.edgeDistance)} 떨어져 있습니다. 교내로 이동한 뒤 다시 시도해 주세요.`;
+      return;
+    }
+
     const nearestDistance = result.nearest?.distance ?? result.centerDistance;
-    const radiusText = Array.isArray(landmark.verificationPoints) && landmark.verificationPoints.length
-      ? `가장 가까운 인증 지점(${nearestName})`
-      : `현장 반경 ${landmark.radius}m`;
-    elements.verifyMessage.textContent = `현재 ${radiusText}에서 약 ${formatDistance(nearestDistance)} 떨어져 있습니다. 위치 정확도가 좋아진 뒤 다시 시도해 주세요.`;
+    elements.verifyMessage.textContent = `현재 현장 반경에서 약 ${formatDistance(nearestDistance)} 떨어져 있습니다. 위치 정확도가 좋아진 뒤 다시 시도해 주세요.`;
   }, (message) => { elements.verifyMessage.textContent = message; });
 }
 

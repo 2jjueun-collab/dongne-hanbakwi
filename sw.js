@@ -1,6 +1,6 @@
-const CACHE = 'hagom-local-quest-v20-campus-gps';
+const CACHE = 'hagom-local-quest-v21-campus-polygon';
 const CORE = [
-  './', './index.html', './styles.css?v=20-campus-gps', './app.js?v=20-campus-gps', './data.js',
+  './', './index.html', './styles.css?v=21-campus-polygon', './app.js?v=21-campus-polygon', './data.js',
   './manifest.webmanifest', './assets/hagom-front-balanced.png',
   './assets/hagom-placeholder.svg', './assets/favicon.svg', './assets/app-icon.svg'
 ];

@@ -14,18 +14,21 @@ export const LANDMARKS = [
     description: '대학도시 경산을 상징하는 캠퍼스 탐험지',
     story: '캠퍼스를 걸으며 경산의 청년 문화를 발견해 보세요.',
     lat: 35.8359, lng: 128.7530, radius: 500,
-    // 영남대학교는 캠퍼스가 넓어 중심 좌표 하나만으로 인증하지 않습니다.
-    // 아래 지점 중 가장 가까운 곳을 기준으로 계산하고, 캠퍼스 전체 보정 반경도 함께 적용합니다.
-    verificationPoints: [
-      { name: '정문·서편', lat: 35.8359, lng: 128.7530, radius: 330 },
-      { name: '중앙 캠퍼스', lat: 35.8346, lng: 128.7587, radius: 360 },
-      { name: '학생회관·도서관 권역', lat: 35.8329, lng: 128.7618, radius: 360 },
-      { name: '공학·기계관 권역', lat: 35.8317, lng: 128.7653, radius: 420 },
-      { name: '후문·동편', lat: 35.8297, lng: 128.7680, radius: 380 },
-      { name: '북동 캠퍼스', lat: 35.8372, lng: 128.7632, radius: 360 },
-      { name: '기숙사·북편', lat: 35.8390, lng: 128.7577, radius: 360 }
+    // 영남대학교처럼 넓고 불규칙한 장소는 중심점 반경 대신 캠퍼스 경계 폴리곤으로 인증합니다.
+    // 좌표 순서는 지도 경계를 따라 시계 방향이며, 경계 가까이에서는 GPS 정확도만큼 여유를 적용합니다.
+    verificationPolygon: [
+      { lat: 35.8421, lng: 128.7528 }, // 북서 경계
+      { lat: 35.8425, lng: 128.7588 }, // 북쪽 경계
+      { lat: 35.8403, lng: 128.7656 }, // 북동 경계
+      { lat: 35.8366, lng: 128.7696 }, // 동쪽 상단
+      { lat: 35.8316, lng: 128.7710 }, // 자동차·공학관 동편
+      { lat: 35.8278, lng: 128.7688 }, // 후문 남동 경계
+      { lat: 35.8275, lng: 128.7630 }, // 남쪽 경계
+      { lat: 35.8305, lng: 128.7560 }, // 남서 경계
+      { lat: 35.8348, lng: 128.7510 }, // 정문 서편
+      { lat: 35.8390, lng: 128.7508 }  // 북서 연결부
     ],
-    campusWideRadius: 1150,
+    polygonEdgeAllowance: 90,
     qrCode: 'YU2026', points: 100,
     rewards: [
       { id: 'yu-cap', name: '영대 학사모', emoji: '🎓', slot: 'hat' , icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNOCAzNiA1MCAxN2w0MiAxOS00MiAxOUw4IDM2WiIgZmlsbD0iIzE3M2YzNSIgc3Ryb2tlPSIjMWYyOTI1IiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMjUgNDZ2MjJjMTIgMTAgMzggMTAgNTAgMFY0NiIgZmlsbD0iIzI5NWI0YSIgc3Ryb2tlPSIjMWYyOTI1IiBzdHJva2Utd2lkdGg9IjQiLz48cGF0aCBkPSJNODQgMzl2MjkiIHN0cm9rZT0iI2Q2YWEzNiIgc3Ryb2tlLXdpZHRoPSI1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSI4NCIgY3k9IjczIiByPSI2IiBmaWxsPSIjZjJjOTVmIi8+PC9zdmc+', placement: { x: 50, y: 14, width: 45, rotate: 0, layer: 'front' } },
