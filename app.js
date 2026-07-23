@@ -837,10 +837,16 @@ function verifyActiveByGps() {
   if (!landmark) return;
   elements.verifyMessage.textContent = '위치를 확인하는 중입니다…';
   requestLocation(({ lat, lng, accuracy }) => {
-    const distance = distanceMeters(lat, lng, landmark.lat, landmark.lng);
-    const allowed = landmark.radius + Math.min(accuracy || 0, 200);
-    if (distance <= allowed) completeVisit(landmark.id, 'GPS');
-    else elements.verifyMessage.textContent = `현재 약 ${formatDistance(distance)} 떨어져 있습니다. 현장 반경 ${landmark.radius}m 안에서 다시 시도해 주세요.`;
+    const points = landmark.checkpoints ?? [{lat: landmark.lat, lng: landmark.lng}];
+    const allowed = landmark.radius + Math.min(accuracy || 0, 50);
+    let nearest = Infinity;
+    const ok = points.some(point=>{
+      const d=distanceMeters(lat,lng,point.lat,point.lng);
+      if(d<nearest) nearest=d;
+      return d<=allowed;
+    });
+    if (ok) completeVisit(landmark.id,'GPS');
+    else elements.verifyMessage.textContent = `현재 약 ${formatDistance(nearest)} 떨어져 있습니다.`;
   }, (message) => { elements.verifyMessage.textContent = message; });
 }
 
